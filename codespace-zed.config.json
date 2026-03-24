@@ -1,0 +1,18 @@
+{
+  "defaultTarget": "demo",
+  "targets": {
+    "demo": {
+      "repository": "rpcpool/rpcpool",
+      "branch": "main",
+      "displayName": "rpcpool-main",
+      "workspacePath": "/workspaces/rpcpool",
+      "machine": "standardLinux32gb",
+      "location": "SouthEastAsia",
+      "devcontainerPath": ".devcontainer/devcontainer.json",
+      "idleTimeout": "30m",
+      "retentionPeriod": "72h",
+      "uploadBinaryOverSsh": true,
+      "zedNickname": "rpcpool-main"
+    }
+  }
+}

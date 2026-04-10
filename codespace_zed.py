@@ -42,7 +42,8 @@ def main(argv: list[str] | None = None) -> int:
     if not codespace:
         if options.dry_run:
             raise RuntimeError("No matching codespace exists and --dry-run forbids creating one.")
-        codespace = create_codespace(target)
+        create_target = prepare_target_for_creation(target, input_fn=input, is_tty=sys.stdin.isatty())
+        codespace = create_codespace(create_target)
 
     ensure_codespace_reachable(codespace["name"])
 
@@ -244,6 +245,64 @@ def build_create_args(target: dict[str, Any]) -> list[str]:
         if value:
             args.extend([flag, value])
     return args
+
+
+def prepare_target_for_creation(
+    target: dict[str, Any],
+    *,
+    input_fn=input,
+    is_tty: bool | None = None,
+) -> dict[str, Any]:
+    prepared = dict(target)
+
+    if is_tty is None:
+        is_tty = sys.stdin.isatty()
+
+    if not is_tty:
+        return prepared
+
+    work_label = prompt_for_work_label(input_fn=input_fn)
+    if not work_label:
+        return prepared
+
+    prepared["displayName"] = build_display_name(
+        repository=target["repository"],
+        branch=target.get("branch"),
+        work_label=work_label,
+        fallback=target.get("displayName"),
+    )
+    return prepared
+
+
+def prompt_for_work_label(*, input_fn=input) -> str:
+    while True:
+        raw = input_fn("What work are you planning to do in this codespace? ").strip()
+        if raw:
+            return raw
+        print("Enter a short label so the new codespace is easier to recognize later.")
+
+
+def build_display_name(
+    *,
+    repository: str,
+    branch: str | None,
+    work_label: str,
+    fallback: str | None = None,
+) -> str:
+    repo_name = repository.split("/", 1)[-1]
+    parts = [repo_name]
+    if branch:
+        parts.append(branch)
+    base = "-".join(parts)
+    slug = slugify_work_label(work_label)
+    candidate = f"{base}-{slug}" if slug else (fallback or base)
+    return candidate[:48]
+
+
+def slugify_work_label(value: str) -> str:
+    lowered = value.lower().strip()
+    slug = re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
+    return slug
 
 
 def parse_primary_host_alias(ssh_config_text: str) -> str:

@@ -5,7 +5,7 @@
       "repository": "rpcpool/rpcpool",
       "branch": "main",
       "displayName": "rpcpool-main",
-      "workspacePath": "/workspaces/rpcpool",
+      "workspacePath": "/workspaces",
       "machine": "standardLinux32gb",
       "location": "SouthEastAsia",
       "devcontainerPath": ".devcontainer/devcontainer.json",

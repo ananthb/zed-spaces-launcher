@@ -1,6 +1,7 @@
 import unittest
 
 from codespace_zed import (
+    build_display_name,
     build_create_args,
     build_zed_connection,
     choose_codespace,
@@ -10,8 +11,10 @@ from codespace_zed import (
     parse_args,
     parse_jsonc,
     parse_primary_host_alias,
+    prepare_target_for_creation,
     prompt_for_codespace_choice,
     select_codespace,
+    slugify_work_label,
     upsert_ssh_connection,
 )
 
@@ -143,6 +146,32 @@ class CodespaceZedTests(unittest.TestCase):
                 "72h",
             ],
         )
+
+    def test_prepare_target_for_creation_updates_display_name(self) -> None:
+        target = {
+            "repository": "rpcpool/rpcpool",
+            "branch": "main",
+            "displayName": "rpcpool-main",
+        }
+        prepared = prepare_target_for_creation(
+            target,
+            input_fn=lambda _: "indexer cleanup",
+            is_tty=True,
+        )
+        self.assertEqual(prepared["displayName"], "rpcpool-main-indexer-cleanup")
+        self.assertEqual(target["displayName"], "rpcpool-main")
+
+    def test_build_display_name_truncates_to_codespaces_limit(self) -> None:
+        display_name = build_display_name(
+            repository="rpcpool/rpcpool",
+            branch="main",
+            work_label="a" * 80,
+        )
+        self.assertLessEqual(len(display_name), 48)
+        self.assertTrue(display_name.startswith("rpcpool-main-"))
+
+    def test_slugify_work_label_normalizes_text(self) -> None:
+        self.assertEqual(slugify_work_label("Fix RPC / Health Checks"), "fix-rpc-health-checks")
 
     def test_parse_primary_host_alias_returns_first_concrete_host(self) -> None:
         ssh_config = """

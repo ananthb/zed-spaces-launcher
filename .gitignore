@@ -1,1 +1,4 @@
-__pycache__
+codespace-zed
+result
+.direnv
+vendor/

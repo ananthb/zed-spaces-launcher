@@ -73,10 +73,6 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
 
-	if len(cfg.Targets) == 0 {
-		return nil, fmt.Errorf("expected \"targets\" object in %s", path)
-	}
-
 	return &cfg, nil
 }
 

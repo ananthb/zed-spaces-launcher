@@ -36,6 +36,7 @@ const defaultConfigPath = "codespace-zed.config.json"
 
 func main() {
 	if err := rootCmd().Execute(); err != nil {
+		tui.StatusErr("error", err.Error())
 		os.Exit(1)
 	}
 }

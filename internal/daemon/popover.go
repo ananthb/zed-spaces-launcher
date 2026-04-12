@@ -27,12 +27,9 @@ func (d *Daemon) showPopover(args ...string) {
 		return
 	}
 
-	// Build the command. Pass --config so the child uses the same config.
-	cmdArgs := []string{}
-	if d.ConfigPath != "" {
-		cmdArgs = append(cmdArgs, "--config", d.ConfigPath)
-	}
-	cmdArgs = append(cmdArgs, args...)
+	// The binary may be a nix wrapper that already passes --config,
+	// so we only pass the target args.
+	cmdArgs := append([]string{}, args...)
 
 	cmd := exec.Command(binary, cmdArgs...)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")

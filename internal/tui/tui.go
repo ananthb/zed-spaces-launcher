@@ -27,6 +27,13 @@ type numberTimeoutMsg struct {
 	seq int
 }
 
+// escTimeoutMsg fires when the double-esc window expires.
+type escTimeoutMsg struct {
+	seq int
+}
+
+const escTimeout = 300 * time.Millisecond
+
 var (
 	selectedStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("212"))
 	recommendedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
@@ -84,6 +91,8 @@ type RepoModel struct {
 	cursor      int // position within filtered list (+ possible "use as-is" row)
 	result      RepoResult
 	done        bool
+	escPending  bool // true if one esc was pressed, waiting for second
+	escSeq      int
 }
 
 // NewRepoModel creates a repo selection model.
@@ -150,6 +159,11 @@ func (m RepoModel) Init() tea.Cmd { return tea.EnableMouseCellMotion }
 
 func (m RepoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case escTimeoutMsg:
+		if msg.seq == m.escSeq {
+			m.escPending = false
+		}
+
 	case tea.MouseMsg:
 		total := m.totalChoices()
 		switch msg.Button {
@@ -170,10 +184,38 @@ func (m RepoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		key := msg.String()
 
 		switch key {
-		case "ctrl+c", "esc":
+		case "ctrl+c":
 			m.result.Quit = true
 			m.done = true
 			return m, tea.Quit
+		case "esc":
+			if m.escPending {
+				// Double esc — quit.
+				m.result.Quit = true
+				m.done = true
+				return m, tea.Quit
+			}
+			// Single esc — clear filter or start double-esc timer.
+			if m.filter != "" {
+				m.filter = ""
+				m.refilter()
+			} else {
+				m.escPending = true
+				m.escSeq++
+				seq := m.escSeq
+				return m, tea.Tick(escTimeout, func(time.Time) tea.Msg {
+					return escTimeoutMsg{seq: seq}
+				})
+			}
+		case "q":
+			// q quits when not typing a filter.
+			if m.filter == "" {
+				m.result.Quit = true
+				m.done = true
+				return m, tea.Quit
+			}
+			m.filter += key
+			m.refilter()
 		case "up":
 			m.cursor = wrap(m.cursor-1, m.totalChoices())
 		case "down":
@@ -258,7 +300,7 @@ func (m RepoModel) View() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(dimStyle.Render("↑/↓ to move, type to filter, enter to select, esc to quit"))
+	b.WriteString(dimStyle.Render("↑/↓ move, type to filter, enter select, q/esc esc quit"))
 	return b.String()
 }
 
@@ -306,6 +348,8 @@ type SelectModel struct {
 	repo           string
 	numberBuf      string
 	numberSeq      int
+	escPending     bool
+	escSeq         int
 }
 
 // NewSelectModel creates a selection model.
@@ -345,6 +389,20 @@ func (m SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.selectCurrent()
 		}
 
+	case escTimeoutMsg:
+		if msg.seq == m.escSeq {
+			m.escPending = false
+			// Single esc expired — go back if allowed.
+			if m.allowBack {
+				m.result.Back = true
+				m.done = true
+				return m, tea.Quit
+			}
+			m.result.Quit = true
+			m.done = true
+			return m, tea.Quit
+		}
+
 	case tea.MouseMsg:
 		switch msg.Button {
 		case tea.MouseButtonWheelUp:
@@ -372,15 +430,26 @@ func (m SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.result.Quit = true
 			m.done = true
 			return m, tea.Quit
-		case "esc", "backspace":
+		case "esc":
+			if m.escPending {
+				// Double esc — always quit, even if allowBack.
+				m.result.Quit = true
+				m.done = true
+				return m, tea.Quit
+			}
+			// Start double-esc timer. If it expires, go back or quit.
+			m.escPending = true
+			m.escSeq++
+			seq := m.escSeq
+			return m, tea.Tick(escTimeout, func(time.Time) tea.Msg {
+				return escTimeoutMsg{seq: seq}
+			})
+		case "backspace":
 			if m.allowBack {
 				m.result.Back = true
 				m.done = true
 				return m, tea.Quit
 			}
-			m.result.Quit = true
-			m.done = true
-			return m, tea.Quit
 		case "q":
 			m.result.Quit = true
 			m.done = true
@@ -474,11 +543,11 @@ func (m SelectModel) View() string {
 	}
 
 	b.WriteString("\n")
-	hint := "↑/↓ to move, # or enter to select, d to delete"
+	hint := "↑/↓ move, # or enter select, d delete"
 	if m.allowBack {
-		hint += ", esc to choose a different repo"
+		hint += ", esc back, esc esc quit"
 	} else {
-		hint += ", esc to quit"
+		hint += ", q/esc quit"
 	}
 	if m.numberBuf != "" {
 		hint = fmt.Sprintf("typing: %s…", m.numberBuf)

@@ -20,6 +20,7 @@ func (d *Daemon) showPopover(args ...string) {
 		return
 	}
 
+	// Find our own binary. On nix this is the wrapper which sets up PATH with gh.
 	binary, err := os.Executable()
 	if err != nil {
 		log.Printf("popover: cannot find executable: %v", err)
@@ -27,14 +28,16 @@ func (d *Daemon) showPopover(args ...string) {
 	}
 
 	// Build the command. Pass --config so the child uses the same config.
-	cmdArgs := []string{binary}
+	cmdArgs := []string{}
 	if d.ConfigPath != "" {
 		cmdArgs = append(cmdArgs, "--config", d.ConfigPath)
 	}
 	cmdArgs = append(cmdArgs, args...)
 
-	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	cmd := exec.Command(binary, cmdArgs...)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
+
+	log.Printf("popover: launching %s %v", binary, cmdArgs)
 
 	// Start with an initial PTY size.
 	initialSize := &pty.Winsize{Rows: 30, Cols: 80}
@@ -43,6 +46,8 @@ func (d *Daemon) showPopover(args ...string) {
 		log.Printf("popover: pty start: %v", err)
 		return
 	}
+
+	log.Printf("popover: child pid %d", cmd.Process.Pid)
 
 	term := terminal.New()
 
@@ -82,6 +87,12 @@ func (d *Daemon) showPopover(args ...string) {
 		}
 	}()
 
+	// Wait for child in background so we can log exit status.
+	childDone := make(chan error, 1)
+	go func() {
+		childDone <- cmd.Wait()
+	}()
+
 	var w fyne.Window
 	fyne.Do(func() {
 		w = d.app.NewWindow("codespace-zed")
@@ -95,9 +106,21 @@ func (d *Daemon) showPopover(args ...string) {
 		w.Show()
 	})
 
-	// Run the terminal connected to the PTY (blocks until process exits).
+	// Run the terminal connected to the PTY (blocks until EOF on reader).
 	if err := term.RunWithConnection(ptmx, ptmx); err != nil && err != io.EOF {
 		log.Printf("popover: terminal: %v", err)
+	}
+
+	// Check why the child exited.
+	select {
+	case err := <-childDone:
+		if err != nil {
+			log.Printf("popover: child exited with error: %v", err)
+		} else {
+			log.Printf("popover: child exited cleanly")
+		}
+	default:
+		log.Printf("popover: terminal disconnected, cleaning up")
 	}
 
 	// Process exited — clean up and close the window.

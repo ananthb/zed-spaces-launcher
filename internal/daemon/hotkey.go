@@ -114,20 +114,8 @@ func parseHotkeyString(s string) ([]hotkey.Modifier, hotkey.Key, error) {
 	return mods, key, nil
 }
 
-func parseModifier(s string) (hotkey.Modifier, error) {
-	switch strings.ToLower(s) {
-	case "cmd", "command", "super", "mod":
-		return hotkey.ModCmd, nil
-	case "ctrl", "control":
-		return hotkey.ModCtrl, nil
-	case "shift":
-		return hotkey.ModShift, nil
-	case "alt", "option", "opt":
-		return hotkey.ModOption, nil
-	default:
-		return 0, fmt.Errorf("unknown modifier %q", s)
-	}
-}
+// parseModifier is platform-specific (hotkey_modifiers_darwin.go / hotkey_modifiers_linux.go)
+// because golang.design/x/hotkey defines different modifier constants per OS.
 
 // keyMap maps lowercase key names to hotkey.Key constants.
 // These constants are platform-specific virtual key codes, not ASCII.

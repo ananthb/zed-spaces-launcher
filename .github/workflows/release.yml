@@ -7,47 +7,27 @@ on:
 
 jobs:
   linux:
-    name: Linux (${{ matrix.arch }})
+    name: Linux
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - system: x86_64-linux
-            arch: amd64
-          - system: aarch64-linux
-            arch: arm64
     steps:
       - uses: actions/checkout@v4
 
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Setup QEMU for aarch64
-        if: matrix.system == 'aarch64-linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-user-static
-
-      - name: Configure Nix for aarch64 cross-compilation
-        if: matrix.system == 'aarch64-linux'
-        run: |
-          echo "extra-platforms = aarch64-linux" | sudo tee -a /etc/nix/nix.conf
-          sudo systemctl restart nix-daemon
-
       - name: Build release tarball
         run: |
-          nix build .#packages.${{ matrix.system }}.release -o result-release
-          cp "$(readlink result-release)" dist-codespace-zed-${{ matrix.arch }}.tar.gz
+          nix build .#packages.x86_64-linux.release -o result-release
+          cp "$(readlink result-release)" dist-codespace-zed-amd64.tar.gz
 
       - name: Build AppImage
         run: |
-          nix build .#packages.${{ matrix.system }}.appimage -o result-appimage
-          cp "$(readlink result-appimage)" dist-codespace-zed-${{ matrix.arch }}.AppImage
+          nix build .#packages.x86_64-linux.appimage -o result-appimage
+          cp "$(readlink result-appimage)" dist-codespace-zed-amd64.AppImage
 
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-${{ matrix.arch }}
+          name: linux
           path: dist-*
 
   macos:
@@ -57,10 +37,16 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Build DMG
+      - name: Build package
+        run: nix build .#packages.aarch64-darwin.default -o result
+
+      - name: Create DMG
         run: |
-          nix build .#release -o result-dmg
-          cp "$(readlink result-dmg)" dist-codespace-zed-macos-arm64.dmg
+          mkdir -p dmg-staging
+          cp result/bin/codespace-zed dmg-staging/
+          cp dist/codespace-zed.config.example.json dmg-staging/
+          hdiutil create -volname "codespace-zed" -srcfolder dmg-staging \
+            -ov -format UDZO dist-codespace-zed-macos-arm64.dmg
 
       - uses: actions/upload-artifact@v4
         with:

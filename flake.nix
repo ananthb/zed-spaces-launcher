@@ -18,7 +18,7 @@
 
         codespace-zed = pkgs.buildGoModule {
           pname = "codespace-zed";
-          version = "0.3.0";
+          version = "0.4.0";
           src = ./.;
 
           vendorHash = "sha256-b20qQYsg/KKpRtWPEs0WD9YaUd1hOI6yps7aZqmoA3U=";
@@ -69,6 +69,18 @@
             # Dist files (example config, systemd service).
             install -Dm644 $src/dist/codespace-zed.config.example.json $out/share/codespace-zed/codespace-zed.config.example.json
             install -Dm644 $src/dist/codespace-zed.service $out/share/codespace-zed/codespace-zed.service
+          '' + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
+            # macOS .app bundle — gives the binary a dock icon, proper
+            # app lifecycle, and allows launchd to manage it correctly.
+            # Files must be real copies (not symlinks into /nix/store)
+            # or Gatekeeper rejects the bundle as damaged.
+            mkdir -p "$out/Applications/Codespace Zed.app/Contents/MacOS"
+            mkdir -p "$out/Applications/Codespace Zed.app/Contents/Resources"
+            cp $src/dist/Info.plist "$out/Applications/Codespace Zed.app/Contents/Info.plist"
+            cp $src/dist/icon.icns "$out/Applications/Codespace Zed.app/Contents/Resources/icon.icns"
+            # Copy the wrapper script — it's a small shell script that
+            # sets up PATH and exec's the real binary, so the copy is cheap.
+            cp $out/bin/codespace-zed "$out/Applications/Codespace Zed.app/Contents/MacOS/codespace-zed"
           '';
 
           meta = with pkgs.lib; {
@@ -158,7 +170,49 @@
                 chmod +x $out
               '';
         }
-        // pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin { };
+        // pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
+          release =
+            let
+              pkg = codespace-zed;
+              arch = if system == "x86_64-darwin" then "amd64" else "arm64";
+            in
+            pkgs.runCommand "codespace-zed-darwin-${arch}.dmg"
+              { nativeBuildInputs = [ pkgs.create-dmg ]; }
+              ''
+                mkdir -p staging
+                cp -rL "${pkg}/Applications/Codespace Zed.app" staging/
+
+                # Script that symlinks the CLI binary into /usr/local/bin
+                # so users can run codespace-zed from the terminal.
+                cat > staging/Install\ CLI.command << 'SCRIPT'
+                #!/bin/bash
+                set -e
+                dst="/usr/local/bin/codespace-zed"
+                src="/Applications/Codespace Zed.app/Contents/MacOS/codespace-zed"
+                if [ ! -f "$src" ]; then
+                  echo "Error: Codespace Zed.app not found in /Applications."
+                  echo "Drag the app to Applications first, then run this again."
+                  exit 1
+                fi
+                mkdir -p /usr/local/bin
+                ln -sf "$src" "$dst"
+                echo "Installed: $dst -> $src"
+                SCRIPT
+                chmod +x staging/Install\ CLI.command
+
+                # create-dmg returns exit code 2 when it succeeds but
+                # skips the code-signing step (expected in a sandbox).
+                create-dmg \
+                  --volname "Codespace Zed" \
+                  --window-size 600 400 \
+                  --icon-size 128 \
+                  --icon "Codespace Zed.app" 150 190 \
+                  --app-drop-link 450 190 \
+                  $out \
+                  staging/ \
+                || test $? -eq 2
+              '';
+        };
 
         devShells.default = pkgs.mkShell {
           packages = [

@@ -1,12 +1,12 @@
 package daemon
 
 import (
-	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"github.com/creack/pty"
@@ -51,10 +51,12 @@ func (d *Daemon) showPopover(args ...string) {
 		return
 	}
 
-	cmd := exec.Command(binary, args...)
+	// Always pass --config so the child can resolve targets.
+	fullArgs := append([]string{"--config", d.ConfigPath}, args...)
+	cmd := exec.Command(binary, fullArgs...)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 
-	log.Printf("popover: launching %s %v", binary, args)
+	log.Printf("popover: launching %s %v (PATH=%s)", binary, fullArgs, os.Getenv("PATH"))
 
 	// Start with an initial PTY size.
 	initialSize := &pty.Winsize{Rows: 30, Cols: 80}
@@ -110,9 +112,13 @@ func (d *Daemon) showPopover(args ...string) {
 		childDone <- cmd.Wait()
 	}()
 
-	var w fyne.Window
+	// Create and show the window on the main thread, then wait for it
+	// to be fully visible before connecting the terminal to the PTY.
+	// fyne.Do queues work on the main goroutine — it does NOT block —
+	// so we use a channel to synchronize.
+	shown := make(chan fyne.Window, 1)
 	fyne.Do(func() {
-		w = d.app.NewWindow("codespace-zed")
+		w := d.app.NewWindow("Codespace Zed")
 		w.SetPadded(false)
 		w.Resize(fyne.NewSize(700, 500))
 		w.CenterOnScreen()
@@ -121,26 +127,36 @@ func (d *Daemon) showPopover(args ...string) {
 			cleanup()
 		})
 		w.Show()
+		shown <- w
 	})
 
+	// Block until the window is shown.
+	w := <-shown
+	log.Printf("popover: window shown, connecting terminal")
+
 	// Run the terminal connected to the PTY (blocks until EOF on reader).
-	if err := term.RunWithConnection(ptmx, ptmx); err != nil && err != io.EOF {
-		log.Printf("popover: terminal: %v", err)
-	}
+	termErr := term.RunWithConnection(ptmx, ptmx)
+	log.Printf("popover: terminal finished (err=%v)", termErr)
 
-	// Check why the child exited.
+	// Wait briefly for the child to report its exit status — there is a
+	// small race between the PTY EOF and cmd.Wait completing.
+	var childExitErr error
 	select {
-	case err := <-childDone:
-		if err != nil {
-			log.Printf("popover: child exited with error: %v", err)
-		} else {
-			log.Printf("popover: child exited cleanly")
-		}
-	default:
-		log.Printf("popover: terminal disconnected, cleaning up")
+	case childExitErr = <-childDone:
+		log.Printf("popover: child exited (err=%v)", childExitErr)
+	case <-time.After(500 * time.Millisecond):
+		log.Printf("popover: terminal disconnected, child still running")
 	}
 
-	// Process exited — clean up and close the window.
+	if childExitErr != nil {
+		// Keep the window open so the user can read the error.
+		// The window's close-intercept will trigger cleanup.
+		log.Printf("popover: keeping window open (child failed)")
+		<-done
+		return
+	}
+
+	// Clean exit — close the window.
 	cleanup()
 	fyne.Do(func() {
 		if w != nil {

@@ -9,7 +9,7 @@
 
 ## macOS
 
-Download the `.dmg` from [GitHub Releases](https://github.com/ananthb/zed-spaces-launcher/releases), open it, and drag to a location on your PATH.
+Download the `.dmg` from [GitHub Releases](https://github.com/ananthb/zed-spaces-launcher/releases), open it, and drag **Codespace Zed.app** to Applications. Then double-click **Install CLI.command** in the DMG to symlink the `codespace-zed` CLI into `/usr/local/bin`.
 
 Available for: `aarch64` (Apple Silicon).
 

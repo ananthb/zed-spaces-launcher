@@ -4,6 +4,7 @@ import (
 	_ "embed"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/theme"
 )
 
 //go:embed assets/icon.png
@@ -16,13 +17,15 @@ var iconActivePNG []byte
 var iconAppSVG []byte
 
 // trayIconIdle returns the hollow cloud icon (no tracked codespaces).
+// Uses ThemedResource so Fyne calls SetTemplateIcon on macOS, enabling
+// automatic light/dark mode switching.
 func trayIconIdle() fyne.Resource {
-	return fyne.NewStaticResource("icon.png", iconIdlePNG)
+	return theme.NewThemedResource(fyne.NewStaticResource("icon.png", iconIdlePNG))
 }
 
 // trayIconActive returns the filled cloud icon (tracking codespaces).
 func trayIconActive() fyne.Resource {
-	return fyne.NewStaticResource("icon_active.png", iconActivePNG)
+	return theme.NewThemedResource(fyne.NewStaticResource("icon_active.png", iconActivePNG))
 }
 
 // appIcon returns the app icon for dock/taskbar.

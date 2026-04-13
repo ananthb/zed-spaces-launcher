@@ -15,6 +15,10 @@ When no target is given, the tool enters a TUI:
 
 If a `defaultTarget` is set in the config, the tool jumps straight to the codespace selector for that repo. Press `esc` to go back to the full repo picker.
 
+## Auto-select
+
+When there is only one codespace for a repository, it is automatically selected without showing the codespace selector TUI. Combined with the fast path for already-running codespaces, this means clicking a tray menu item can focus an existing Zed window instantly.
+
 ## Named target
 
 ```bash
@@ -22,6 +26,14 @@ codespace-zed work
 ```
 
 Uses the target definition from the config file directly.
+
+## Direct repository
+
+```bash
+codespace-zed owner/repo
+```
+
+When the argument contains a `/`, it is treated as a repository name rather than a config target. This builds a default target for that repo (workspace path `/workspaces/<repo>`) and skips the repo picker.
 
 ## Flags
 

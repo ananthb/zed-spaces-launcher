@@ -222,7 +222,7 @@ func (m RepoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor = wrap(m.cursor+1, m.totalChoices())
 		case "enter":
 			return m.selectCurrent()
-		case "backspace":
+		case "backspace", "ctrl+h":
 			if len(m.filter) > 0 {
 				m.filter = m.filter[:len(m.filter)-1]
 				m.refilter()
@@ -444,7 +444,7 @@ func (m SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Tick(escTimeout, func(time.Time) tea.Msg {
 				return escTimeoutMsg{seq: seq}
 			})
-		case "backspace":
+		case "backspace", "ctrl+h":
 			if m.allowBack {
 				m.result.Back = true
 				m.done = true

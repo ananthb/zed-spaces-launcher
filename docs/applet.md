@@ -27,6 +27,10 @@ The `hotkeyAction` config option controls what happens when you press the hotkey
 
 Both `previous` and `default` fall back to the picker if there's no history or no default target.
 
+## Quick reconnect
+
+When you click a repository in the tray menu, the applet passes the repo (or config target name) directly to the child process, skipping the repo selector TUI. If there is only one codespace for that repo and it is already running with an SSH config on disk, the applet focuses the existing Zed window without any intermediate UI.
+
 ## Service management
 
 The applet is designed to be managed by your OS service manager.

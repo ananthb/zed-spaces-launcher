@@ -29,13 +29,14 @@ func (d *Daemon) buildTrayMenu() *fyne.Menu {
 			entry := hist.Entries[i]
 			targetName := d.targetNameForRepo(entry.Repository)
 			label := entry.Repository
+			// Prefer config target name; fall back to repo name so the
+			// child process can skip the repo selector TUI.
 			args := targetName
+			if args == "" {
+				args = entry.Repository
+			}
 			items = append(items, fyne.NewMenuItem(label, func() {
-				if args != "" {
-					go d.showPopover(args)
-				} else {
-					go d.showPopover()
-				}
+				go d.showPopover(args)
 			}))
 		}
 	}

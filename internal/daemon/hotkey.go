@@ -88,6 +88,10 @@ func (d *Daemon) hotkeyActionPrevious() {
 			d.showPopover(name)
 			return
 		}
+		// No config target — pass repo name directly so the child
+		// process can skip the repo selector TUI.
+		d.showPopover(repo)
+		return
 	}
 	d.showPopover()
 }

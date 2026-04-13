@@ -35,11 +35,31 @@ import (
 const defaultConfigPath = "codespace-zed.config.json"
 
 func main() {
+	// When launched from a macOS .app bundle (double-click, Dock, Spotlight),
+	// ensure the launchd agent is running rather than starting a second
+	// instance. If the agent isn't registered, fall back to running inline.
+	if isAppBundle() && len(os.Args) == 1 {
+		if ensureLaunchdAgent() {
+			return
+		}
+		os.Args = append(os.Args, "applet")
+	}
+
 	if err := rootCmd().Execute(); err != nil {
 		tui.StatusErr("error", err.Error())
 		os.Exit(1)
 	}
 }
+
+// isAppBundle returns true if the running binary is inside a macOS .app bundle.
+func isAppBundle() bool {
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(exe, ".app/Contents/MacOS/")
+}
+
 
 func rootCmd() *cobra.Command {
 	var (
@@ -123,9 +143,6 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 	if err := codespace.RequireCommand("gh"); err != nil {
 		return err
 	}
-	if err := codespace.RequireCommand("zed"); err != nil {
-		return err
-	}
 
 	runner := codespace.DefaultGHRunner{}
 	interactive := term.IsTerminal(int(os.Stdin.Fd()))
@@ -151,15 +168,18 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 	dynamicMode := false
 
 	if targetName != "" {
-		if cfg == nil {
+		// If the argument looks like owner/repo, treat it as a direct repo
+		// name rather than a config target (used by the tray for history entries).
+		if strings.Contains(targetName, "/") {
+			target, resolvedTargetName = targetForRepo(cfg, targetName)
+		} else if cfg == nil {
 			return fmt.Errorf("target %q specified but no config file found at %s", targetName, absConfigPath)
-		}
-		t, ok := cfg.Targets[targetName]
-		if !ok {
+		} else if t, ok := cfg.Targets[targetName]; ok {
+			target = t
+			resolvedTargetName = targetName
+		} else {
 			return fmt.Errorf("unknown target %q in %s", targetName, absConfigPath)
 		}
-		target = t
-		resolvedTargetName = targetName
 	} else if cfg != nil && cfg.DefaultTarget != "" {
 		t, ok := cfg.Targets[cfg.DefaultTarget]
 		if !ok {
@@ -214,6 +234,12 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 				break
 			}
 
+			// Auto-select when there's only one codespace for this repo.
+			if len(repoCodespaces) == 1 {
+				selected = &repoCodespaces[0]
+				break
+			}
+
 			sel, back, del, err := runSelectionTUIWithBack(repoCodespaces, target, dryRun)
 			if err != nil {
 				return err
@@ -258,7 +284,11 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 
 		wentBack := false
 		if len(codespaces) > 0 {
-			if interactive {
+			// Auto-select when there's only one codespace for this repo,
+			// skipping the TUI entirely (e.g. when launched from the applet).
+			if len(codespaces) == 1 {
+				selected = &codespaces[0]
+			} else if interactive {
 				for {
 					if allowBack {
 						sel, back, del, selErr := runSelectionTUIWithBack(codespaces, target, dryRun)
@@ -350,6 +380,12 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 					break
 				}
 
+				// Auto-select when there's only one codespace for this repo.
+				if len(repoCodespaces) == 1 {
+					selected = &repoCodespaces[0]
+					break
+				}
+
 				sel, back, del, selErr := runSelectionTUIWithBack(repoCodespaces, target, dryRun)
 				if selErr != nil {
 					return selErr
@@ -421,6 +457,39 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 	hist := history.Load()
 	hist.Touch(target.Repository)
 	hist.Save()
+
+	// Fast path: if the codespace is already Available and we have an
+	// SSH config on disk, skip the slow SSH wait + config fetch and
+	// go straight to launching Zed (which will focus an existing window
+	// if already connected).
+	if selected.State == "Available" {
+		paths := sshconfig.ResolvePaths()
+		if alias, ok := sshconfig.ReadExistingAlias(paths.IncludeDir, selected.Name); ok {
+			remoteURL := fmt.Sprintf("ssh://%s/%s", alias, strings.TrimLeft(target.WorkspacePath, "/"))
+			if interactive {
+				tui.Status("⚡", "Codespace already running, opening Zed")
+			}
+			if !dryRun && !noOpen {
+				zedBin, err := codespace.FindZedBinary()
+				if err != nil {
+					return err
+				}
+				cmd := exec.Command(zedBin, remoteURL)
+				return cmd.Run()
+			}
+			if dryRun || noOpen {
+				output := map[string]string{
+					"target":    resolvedTargetName,
+					"codespace": selected.Name,
+					"sshAlias":  alias,
+					"remoteUrl": remoteURL,
+				}
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(output)
+			}
+		}
+	}
 
 	// Ensure SSH connectivity.
 	if interactive {
@@ -498,15 +567,19 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 	}
 
 	// Launch Zed.
+	zedBin, err := codespace.FindZedBinary()
+	if err != nil {
+		return err
+	}
 	if interactive {
 		if err := tui.RunWithSpinner("Launching Zed", func() error {
-			cmd := exec.Command("zed", remoteURL)
+			cmd := exec.Command(zedBin, remoteURL)
 			return cmd.Run()
 		}); err != nil {
 			return err
 		}
 	} else {
-		cmd := exec.Command("zed", remoteURL)
+		cmd := exec.Command(zedBin, remoteURL)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

@@ -81,6 +81,22 @@ func EnsureConfigIncludesGenerated(mainConfigPath string) error {
 	return os.WriteFile(mainConfigPath, []byte(updated), 0644)
 }
 
+// ReadExistingAlias reads the SSH alias from an existing codespace config file.
+// Returns the alias and true if the file exists and contains a valid Host entry,
+// or empty string and false otherwise.
+func ReadExistingAlias(includeDir, codespaceName string) (string, bool) {
+	path := filepath.Join(includeDir, codespaceName+".conf")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	alias, err := ParsePrimaryHostAlias(string(data))
+	if err != nil {
+		return "", false
+	}
+	return alias, true
+}
+
 // WriteCodespaceConfig writes the SSH config for a specific codespace.
 func WriteCodespaceConfig(includeDir, codespaceName, content string) error {
 	if err := os.MkdirAll(includeDir, 0700); err != nil {

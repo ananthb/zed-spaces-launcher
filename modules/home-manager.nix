@@ -190,12 +190,36 @@ in
 
     home.file.".ssh/codespaces-zed/.keep".text = "";
 
+    # Copy .app bundle into ~/Applications on activation.
+    # home.file with recursive=true creates per-file symlinks which macOS
+    # does not recognise as a valid bundle. Instead, copy the whole .app
+    # directory and strip the quarantine xattr so Gatekeeper accepts it.
+    home.activation.codespace-zed-app = lib.mkIf pkgs.stdenv.isDarwin
+      (lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        app_src="${wrappedPackage}/Applications/Codespace Zed.app"
+        app_dst="$HOME/Applications/Codespace Zed.app"
+        $DRY_RUN_CMD rm -rf "$app_dst"
+        $DRY_RUN_CMD cp -RL "$app_src" "$app_dst"
+        $DRY_RUN_CMD chmod -R u+w "$app_dst"
+        $DRY_RUN_CMD xattr -dr com.apple.quarantine "$app_dst" 2>/dev/null || true
+      '');
+
     # macOS launchd agent for the daemon.
     launchd.agents.codespace-zed-daemon = lib.mkIf (cfg.daemon.enable && pkgs.stdenv.isDarwin) {
       enable = true;
       config = {
-        ProgramArguments = [ "${wrappedPackage}/bin/codespace-zed" "applet" ];
-        KeepAlive = true;
+        # Launch from the .app bundle so macOS associates the process
+        # with the bundle (dock icon, app lifecycle, permissions).
+        # The .app binary only has the gh PATH wrapper — it doesn't
+        # include the home-manager --config wrapper, so pass it here.
+        ProgramArguments = [
+          "${wrappedPackage}/Applications/Codespace Zed.app/Contents/MacOS/codespace-zed"
+          "--config" "${configFile}"
+          "applet"
+        ];
+        # Only restart on abnormal exit — lets the user quit cleanly
+        # via the tray menu without launchd immediately restarting.
+        KeepAlive = { SuccessfulExit = false; };
         RunAtLoad = true;
         Label = "com.codespace-zed.daemon";
         StandardOutPath = "${config.home.homeDirectory}/Library/Logs/codespace-zed.log";

@@ -43,6 +43,8 @@ func New(cfg *config.Config, configPath string) *Daemon {
 // Run starts all applet components. It blocks until Stop is called.
 // This must be called from the main OS thread.
 func (d *Daemon) Run() error {
+	enrichPath()
+
 	d.app = app.NewWithID("dev.codespace-zed.applet")
 	d.app.SetIcon(appIcon())
 

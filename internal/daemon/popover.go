@@ -20,10 +20,12 @@ func (d *Daemon) showPopover(args ...string) {
 		return
 	}
 
-	// Find our own binary. On nix this is the wrapper which sets up PATH with gh.
-	binary, err := os.Executable()
+	// Look up codespace-zed on PATH rather than using os.Executable(),
+	// because on nix the running binary is the unwrapped Go binary but
+	// we need the wrapper that sets up PATH (with gh) and --config.
+	binary, err := exec.LookPath("codespace-zed")
 	if err != nil {
-		log.Printf("popover: cannot find executable: %v", err)
+		log.Printf("popover: codespace-zed not found on PATH: %v", err)
 		return
 	}
 

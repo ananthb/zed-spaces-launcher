@@ -78,9 +78,13 @@
             mkdir -p "$out/Applications/Codespace Zed.app/Contents/Resources"
             cp $src/dist/Info.plist "$out/Applications/Codespace Zed.app/Contents/Info.plist"
             cp $src/assets/logo.icns "$out/Applications/Codespace Zed.app/Contents/Resources/icon.icns"
-            # Copy the wrapper script — it's a small shell script that
-            # sets up PATH and exec's the real binary, so the copy is cheap.
-            cp $out/bin/codespace-zed "$out/Applications/Codespace Zed.app/Contents/MacOS/codespace-zed"
+            # Copy the real Go binary (not the nix wrapper) into the app
+            # bundle. The wrapper does exec -a which replaces the process
+            # name with .codespace-zed-wrapped, breaking macOS bundle
+            # identity (dock icon, app name). The Go binary's enrichPath()
+            # discovers gh via the user's login shell PATH, so the nix
+            # wrapper's PATH injection is not needed here.
+            cp $out/bin/.codespace-zed-wrapped "$out/Applications/Codespace Zed.app/Contents/MacOS/codespace-zed"
           '';
 
           meta = with pkgs.lib; {

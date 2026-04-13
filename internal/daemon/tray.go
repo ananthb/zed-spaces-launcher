@@ -40,8 +40,13 @@ func (d *Daemon) buildTrayMenu() *fyne.Menu {
 		}
 	}
 
-	// Open picker.
+	// Open previous / picker.
 	items = append(items, fyne.NewMenuItemSeparator())
+	if len(hist.Entries) > 0 {
+		items = append(items, fyne.NewMenuItem("Open previous", func() {
+			go d.hotkeyActionPrevious()
+		}))
+	}
 	items = append(items, fyne.NewMenuItem("Open picker...", func() {
 		go d.showPopover()
 	}))

@@ -44,7 +44,7 @@ func New(cfg *config.Config, configPath string) *Daemon {
 // This must be called from the main OS thread.
 func (d *Daemon) Run() error {
 	d.app = app.NewWithID("dev.codespace-zed.applet")
-	d.app.SetIcon(trayIconActive()) // dock/taskbar icon
+	d.app.SetIcon(appIcon())
 
 	log.Printf("applet started (pid %d)", os.Getpid())
 

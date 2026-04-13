@@ -5,12 +5,37 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 
 	"fyne.io/fyne/v2"
 	"github.com/creack/pty"
 	terminal "github.com/fyne-io/terminal"
 )
+
+// findBinary locates the codespace-zed wrapper binary to spawn in the popover.
+// Order: PATH lookup → directory of os.Executable() → os.Executable() itself.
+func findBinary() (string, error) {
+	// Best case: on PATH (works in dev, may not work under launchd).
+	if p, err := exec.LookPath("codespace-zed"); err == nil {
+		return p, nil
+	}
+
+	// Under launchd/systemd the service runs the inner binary directly.
+	// The outermost wrapper (with gh on PATH + --config) lives in the
+	// same bin/ directory as os.Executable(), named "codespace-zed".
+	self, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	wrapper := filepath.Join(filepath.Dir(self), "codespace-zed")
+	if _, err := os.Stat(wrapper); err == nil {
+		return wrapper, nil
+	}
+
+	// Last resort: use ourselves.
+	return self, nil
+}
 
 // showPopover opens a Fyne window with a terminal widget
 // running codespace-zed with the given args.
@@ -20,23 +45,16 @@ func (d *Daemon) showPopover(args ...string) {
 		return
 	}
 
-	// Look up codespace-zed on PATH rather than using os.Executable(),
-	// because on nix the running binary is the unwrapped Go binary but
-	// we need the wrapper that sets up PATH (with gh) and --config.
-	binary, err := exec.LookPath("codespace-zed")
+	binary, err := findBinary()
 	if err != nil {
-		log.Printf("popover: codespace-zed not found on PATH: %v", err)
+		log.Printf("popover: cannot find binary: %v", err)
 		return
 	}
 
-	// The binary may be a nix wrapper that already passes --config,
-	// so we only pass the target args.
-	cmdArgs := append([]string{}, args...)
-
-	cmd := exec.Command(binary, cmdArgs...)
+	cmd := exec.Command(binary, args...)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 
-	log.Printf("popover: launching %s %v", binary, cmdArgs)
+	log.Printf("popover: launching %s %v", binary, args)
 
 	// Start with an initial PTY size.
 	initialSize := &pty.Winsize{Rows: 30, Cols: 80}

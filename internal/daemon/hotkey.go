@@ -61,16 +61,7 @@ func (d *Daemon) hotkeyAction() {
 
 	switch action {
 	case "previous":
-		hist := history.Load()
-		if len(hist.Entries) > 0 {
-			repo := hist.Entries[len(hist.Entries)-1].Repository
-			if name := d.targetNameForRepo(repo); name != "" {
-				d.showPopover(name)
-				return
-			}
-		}
-		// No history — fall through to picker.
-		d.showPopover()
+		d.hotkeyActionPrevious()
 
 	case "default":
 		if d.Cfg != nil && d.Cfg.DefaultTarget != "" {
@@ -85,6 +76,20 @@ func (d *Daemon) hotkeyAction() {
 	default: // "picker"
 		d.showPopover()
 	}
+}
+
+// hotkeyActionPrevious launches the most recently used target from history,
+// falling back to the picker if there's no history.
+func (d *Daemon) hotkeyActionPrevious() {
+	hist := history.Load()
+	if len(hist.Entries) > 0 {
+		repo := hist.Entries[len(hist.Entries)-1].Repository
+		if name := d.targetNameForRepo(repo); name != "" {
+			d.showPopover(name)
+			return
+		}
+	}
+	d.showPopover()
 }
 
 // parseHotkeyString converts a string like "Cmd+Shift+C" to hotkey modifiers and key.

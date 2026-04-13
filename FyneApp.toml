@@ -1,0 +1,6 @@
+[Details]
+  Icon = "internal/daemon/assets/icon_active.png"
+  Name = "codespace-zed"
+  ID = "dev.codespace-zed.applet"
+  Version = "0.3.0"
+  Build = 1

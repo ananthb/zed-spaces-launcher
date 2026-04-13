@@ -77,7 +77,7 @@
             mkdir -p "$out/Applications/Codespace Zed.app/Contents/MacOS"
             mkdir -p "$out/Applications/Codespace Zed.app/Contents/Resources"
             cp $src/dist/Info.plist "$out/Applications/Codespace Zed.app/Contents/Info.plist"
-            cp $src/dist/icon.icns "$out/Applications/Codespace Zed.app/Contents/Resources/icon.icns"
+            cp $src/assets/logo.icns "$out/Applications/Codespace Zed.app/Contents/Resources/icon.icns"
             # Copy the wrapper script — it's a small shell script that
             # sets up PATH and exec's the real binary, so the copy is cheap.
             cp $out/bin/codespace-zed "$out/Applications/Codespace Zed.app/Contents/MacOS/codespace-zed"

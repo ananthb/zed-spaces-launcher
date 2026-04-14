@@ -41,6 +41,7 @@ nav:
   - Usage: usage.md
   - Configuration: config.md
   - Menu Bar Applet: applet.md
+  - Contributing: contributing.md
   - API Reference:
     - Overview: api/index.md
     - codespace: api/codespace.md

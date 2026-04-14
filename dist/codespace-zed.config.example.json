@@ -4,7 +4,7 @@
 
   // Applet settings (menu bar icon, hotkey, codespace lifecycle).
   "daemon": {
-    "hotkey": "Cmd+Shift+C",
+    "hotkey": "Cmd+Shift+S",
     // What the hotkey does: "picker" (default), "previous", or "default"
     "hotkeyAction": "picker",
     "terminal": "auto",

@@ -19,7 +19,7 @@ type Config struct {
 
 // DaemonConfig holds settings for the background daemon (tray, hotkey, poller).
 type DaemonConfig struct {
-	Hotkey       string `json:"hotkey,omitempty"`       // e.g. "Cmd+Shift+C" (macOS) or "Super+Shift+C" (Linux)
+	Hotkey       string `json:"hotkey,omitempty"`       // e.g. "Cmd+Shift+S" (macOS) or "Ctrl+Shift+S" (Linux)
 	HotkeyAction string `json:"hotkeyAction,omitempty"` // "picker" (default), "previous", or "default"
 	Terminal     string `json:"terminal,omitempty"`      // terminal app to launch picker in; "auto" to detect
 	PollInterval string `json:"pollInterval,omitempty"`  // how often to poll codespace state (e.g. "5m")
@@ -104,7 +104,7 @@ var TargetFieldDocs = []FieldDoc{
 
 // DaemonFieldDocs is the authoritative documentation for DaemonConfig fields.
 var DaemonFieldDocs = []FieldDoc{
-	{"hotkey", "string", false, "Global hotkey (e.g. Cmd+Shift+C)"},
+	{"hotkey", "string", false, "Global hotkey (e.g. Cmd+Shift+S)"},
 	{"hotkeyAction", "string", false, "Hotkey behavior: picker (default), previous, or default"},
 	{"terminal", "string", false, "Terminal app for picker; auto to detect"},
 	{"pollInterval", "string", false, "Codespace poll interval (e.g. 5m)"},

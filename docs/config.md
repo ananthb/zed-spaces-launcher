@@ -13,7 +13,7 @@ The default path is `codespace-zed.config.json` in the current directory for the
 
   // Applet settings (menu bar icon, hotkey, codespace lifecycle).
   "daemon": {
-    "hotkey": "Cmd+Shift+C",
+    "hotkey": "Cmd+Shift+S",
     "hotkeyAction": "picker",
     "terminal": "auto",
     "pollInterval": "5m"
@@ -57,7 +57,7 @@ These go in the top-level `"daemon"` object and configure the menu bar applet.
 
 | Field | Type | Description |
 |---|---|---|
-| `hotkey` | string | Global hotkey (e.g. `Cmd+Shift+C` or `Super+Shift+C`) |
+| `hotkey` | string | Global hotkey (e.g. `Cmd+Shift+S` or `Ctrl+Shift+S`) |
 | `hotkeyAction` | string | `picker` (default), `previous`, or `default` |
 | `terminal` | string | Terminal app for picker; `auto` to detect |
 | `pollInterval` | string | Codespace poll interval (e.g. `5m`) |

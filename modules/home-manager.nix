@@ -154,7 +154,7 @@ in
 
       hotkey = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
-        default = if pkgs.stdenv.isDarwin then "Cmd+Shift+C" else "Super+Shift+C";
+        default = if pkgs.stdenv.isDarwin then "Cmd+Shift+S" else "Ctrl+Shift+S";
         description = "Global hotkey to open the codespace picker.";
       };
 

@@ -9,7 +9,7 @@ codespace-zed applet
 ## Features
 
 - **System tray icon** — Z-in-cloud icon; hollow when idle, filled when tracking active codespaces
-- **Global hotkey** — configurable shortcut (default `Cmd+Shift+C` on macOS, `Super+Shift+C` on Linux)
+- **Global hotkey** — configurable shortcut (default `Cmd+Shift+S` on macOS, `Ctrl+Shift+S` on Linux)
 - **Tray menu** — default target, recent repos, full picker
 - **Codespace polling** — monitors running codespaces, sends desktop notifications on state changes
 - **Auto-stop** — stops idle codespaces after a configured duration

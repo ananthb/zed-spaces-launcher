@@ -14,9 +14,9 @@ import (
 // defaultHotkey returns the platform default hotkey string.
 func defaultHotkey() string {
 	if runtime.GOOS == "darwin" {
-		return "Cmd+Shift+C"
+		return "Cmd+Shift+S"
 	}
-	return "Super+Shift+C"
+	return "Ctrl+Shift+S"
 }
 
 func (d *Daemon) startHotkeyListener() {
@@ -96,11 +96,11 @@ func (d *Daemon) hotkeyActionPrevious() {
 	d.showPopover()
 }
 
-// parseHotkeyString converts a string like "Cmd+Shift+C" to hotkey modifiers and key.
+// parseHotkeyString converts a string like "Cmd+Shift+S" to hotkey modifiers and key.
 func parseHotkeyString(s string) ([]hotkey.Modifier, hotkey.Key, error) {
 	parts := strings.Split(s, "+")
 	if len(parts) < 2 {
-		return nil, 0, fmt.Errorf("expected modifier+key (e.g. Cmd+Shift+C)")
+		return nil, 0, fmt.Errorf("expected modifier+key (e.g. Cmd+Shift+S)")
 	}
 
 	keyPart := strings.TrimSpace(parts[len(parts)-1])

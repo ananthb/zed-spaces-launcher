@@ -18,7 +18,7 @@
 
         codespace-zed = pkgs.buildGoModule {
           pname = "codespace-zed";
-          version = "0.5.0";
+          version = "0.6.0";
           src = ./.;
 
           vendorHash = "sha256-b20qQYsg/KKpRtWPEs0WD9YaUd1hOI6yps7aZqmoA3U=";

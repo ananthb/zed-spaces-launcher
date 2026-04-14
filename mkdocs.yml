@@ -1,0 +1,54 @@
+site_name: codespace-zed
+site_description: CLI and menu bar applet for GitHub Codespaces + Zed
+site_url: https://ananthb.github.io/zed-spaces-launcher/
+repo_url: https://github.com/ananthb/zed-spaces-launcher
+repo_name: ananthb/zed-spaces-launcher
+
+theme:
+  name: material
+  logo: logo.svg
+  favicon: logo.svg
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Installation: install.md
+  - Usage: usage.md
+  - Configuration: config.md
+  - Menu Bar Applet: applet.md
+  - Contributing: contributing.md
+  - API Reference:
+    - Overview: api/index.md
+    - codespace: api/codespace.md
+    - config: api/config.md
+    - daemon: api/daemon.md
+    - history: api/history.md
+    - slug: api/slug.md
+    - sshconfig: api/sshconfig.md
+    - tui: api/tui.md
+    - zed: api/zed.md

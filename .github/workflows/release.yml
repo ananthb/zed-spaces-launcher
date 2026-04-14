@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build release tarball
+        run: |
+          nix build .#packages.x86_64-linux.release -o result-release
+          cp "$(readlink result-release)" dist-codespace-zed-amd64.tar.gz
+
+      - name: Build AppImage
+        run: |
+          nix build .#packages.x86_64-linux.appimage -o result-appimage
+          cp "$(readlink result-appimage)" dist-codespace-zed-amd64.AppImage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist-*
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build package
+        run: nix build .#packages.aarch64-darwin.default -o result
+
+      - name: Create DMG
+        run: |
+          mkdir -p dmg-staging
+          cp result/bin/codespace-zed dmg-staging/
+          cp dist/codespace-zed.config.example.json dmg-staging/
+          hdiutil create -volname "codespace-zed" -srcfolder dmg-staging \
+            -ov -format UDZO dist-codespace-zed-macos-arm64.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist-*
+
+  release:
+    name: Create Release
+    needs: [linux, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: sigstore/cosign-installer@v3
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Rename artifacts
+        run: |
+          cd artifacts
+          for f in dist-*; do
+            mv "$f" "${f#dist-}"
+          done
+
+      - name: Generate checksums and sign
+        run: |
+          cd artifacts
+          sha256sum $(ls -1 | grep -v '\.sig$\|\.pem$\|SHA256SUMS') > SHA256SUMS
+          for f in *; do
+            cosign sign-blob --yes \
+              --output-signature "${f}.sig" \
+              --output-certificate "${f}.pem" \
+              "$f"
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*

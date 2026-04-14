@@ -6,19 +6,19 @@
 
 CLI and menu bar applet for GitHub Codespaces + [Zed](https://zed.dev).
 
-**[Documentation](https://ananthb.github.io/zed-spaces-launcher/)** ·
-**[Configuration](https://ananthb.github.io/zed-spaces-launcher/config/)** ·
-**[API Reference](https://ananthb.github.io/zed-spaces-launcher/api/)**
+**[Documentation](https://linuskendall.github.io/zed-spaces-launcher/)** ·
+**[Configuration](https://linuskendall.github.io/zed-spaces-launcher/config/)** ·
+**[API Reference](https://linuskendall.github.io/zed-spaces-launcher/api/)**
 
 ## Install
 
 ### macOS
 
-Download the `.dmg` from [Releases](https://github.com/ananthb/zed-spaces-launcher/releases), open it, and drag to Applications.
+Download the `.dmg` from [Releases](https://github.com/linuskendall/zed-spaces-launcher/releases), open it, and drag to Applications.
 
 ### Linux
 
-Download the `.AppImage` from [Releases](https://github.com/ananthb/zed-spaces-launcher/releases):
+Download the `.AppImage` from [Releases](https://github.com/linuskendall/zed-spaces-launcher/releases):
 
 ```bash
 chmod +x codespace-zed-*.AppImage
@@ -29,11 +29,11 @@ chmod +x codespace-zed-*.AppImage
 
 ```nix
 {
-  inputs.codespace-zed.url = "github:ananthb/zed-spaces-launcher";
+  inputs.codespace-zed.url = "github:linuskendall/zed-spaces-launcher";
 }
 ```
 
-Or with [Home Manager](https://ananthb.github.io/zed-spaces-launcher/install/#home-manager) for declarative config + auto-start.
+Or with [Home Manager](https://linuskendall.github.io/zed-spaces-launcher/install/#home-manager) for declarative config + auto-start.
 
 ## Quick start
 

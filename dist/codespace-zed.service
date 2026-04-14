@@ -1,6 +1,6 @@
 [Unit]
 Description=codespace-zed menu bar applet
-Documentation=https://github.com/ananthb/zed-spaces-launcher
+Documentation=https://github.com/linuskendall/zed-spaces-launcher
 After=graphical-session.target
 PartOf=graphical-session.target
 

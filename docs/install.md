@@ -9,7 +9,7 @@
 
 ## macOS
 
-Download the `.dmg` from [GitHub Releases](https://github.com/ananthb/zed-spaces-launcher/releases), open it, and drag **Codespace Zed.app** to Applications. Then double-click **Install CLI.command** in the DMG to symlink the `codespace-zed` CLI into `/usr/local/bin`.
+Download the `.dmg` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases), open it, and drag **Codespace Zed.app** to Applications. Then double-click **Install CLI.command** in the DMG to symlink the `codespace-zed` CLI into `/usr/local/bin`.
 
 Available for: `aarch64` (Apple Silicon).
 
@@ -17,7 +17,7 @@ Available for: `aarch64` (Apple Silicon).
 
 ### AppImage
 
-Download the `.AppImage` from [GitHub Releases](https://github.com/ananthb/zed-spaces-launcher/releases):
+Download the `.AppImage` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases):
 
 ```bash
 chmod +x codespace-zed-*.AppImage
@@ -28,7 +28,7 @@ Available for: `amd64`, `arm64`.
 
 ### Tarball
 
-Download the `.tar.gz` from [GitHub Releases](https://github.com/ananthb/zed-spaces-launcher/releases). Each tarball includes the binary, an example config, and a systemd user service file.
+Download the `.tar.gz` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases). Each tarball includes the binary, an example config, and a systemd user service file.
 
 ```bash
 tar xzf codespace-zed-amd64.tar.gz
@@ -45,7 +45,7 @@ Available for: `amd64`, `arm64`.
 ```nix
 # flake.nix
 {
-  inputs.codespace-zed.url = "github:ananthb/zed-spaces-launcher";
+  inputs.codespace-zed.url = "github:linuskendall/zed-spaces-launcher";
 }
 ```
 
@@ -90,7 +90,7 @@ cosign verify-blob \
   --certificate codespace-zed-amd64.tar.gz.pem \
   --signature codespace-zed-amd64.tar.gz.sig \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp 'github.com/ananthb/zed-spaces-launcher' \
+  --certificate-identity-regexp 'github.com/linuskendall/zed-spaces-launcher' \
   codespace-zed-amd64.tar.gz
 ```
 
@@ -102,7 +102,7 @@ cosign verify-blob \
   --certificate SHA256SUMS.pem \
   --signature SHA256SUMS.sig \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp 'github.com/ananthb/zed-spaces-launcher' \
+  --certificate-identity-regexp 'github.com/linuskendall/zed-spaces-launcher' \
   SHA256SUMS
 
 # Then verify file integrity

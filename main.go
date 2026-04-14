@@ -234,12 +234,6 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 				break
 			}
 
-			// Auto-select when there's only one codespace for this repo.
-			if len(repoCodespaces) == 1 {
-				selected = &repoCodespaces[0]
-				break
-			}
-
 			sel, back, del, err := runSelectionTUIWithBack(repoCodespaces, target, dryRun)
 			if err != nil {
 				return err
@@ -284,9 +278,9 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 
 		wentBack := false
 		if len(codespaces) > 0 {
-			// Auto-select when there's only one codespace for this repo,
-			// skipping the TUI entirely (e.g. when launched from the applet).
-			if len(codespaces) == 1 {
+			// Auto-select when there's only one codespace for this repo
+			// in non-interactive mode (e.g. when launched from the applet).
+			if len(codespaces) == 1 && !interactive {
 				selected = &codespaces[0]
 			} else if interactive {
 				for {
@@ -377,12 +371,6 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 
 				if len(repoCodespaces) == 0 {
 					selected = nil
-					break
-				}
-
-				// Auto-select when there's only one codespace for this repo.
-				if len(repoCodespaces) == 1 {
-					selected = &repoCodespaces[0]
 					break
 				}
 

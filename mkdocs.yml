@@ -1,8 +1,8 @@
 site_name: codespace-zed
 site_description: CLI and menu bar applet for GitHub Codespaces + Zed
-site_url: https://ananthb.github.io/zed-spaces-launcher/
-repo_url: https://github.com/ananthb/zed-spaces-launcher
-repo_name: ananthb/zed-spaces-launcher
+site_url: https://linuskendall.github.io/zed-spaces-launcher/
+repo_url: https://github.com/linuskendall/zed-spaces-launcher
+repo_name: linuskendall/zed-spaces-launcher
 
 theme:
   name: material

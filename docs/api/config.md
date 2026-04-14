@@ -2,4 +2,4 @@
 
 # config
 
-Run `gomarkdoc ./internal/config/` to generate, or see the [CI workflow](https://github.com/ananthb/zed-spaces-launcher/actions/workflows/docs.yml).
+Run `gomarkdoc ./internal/config/` to generate, or see the [CI workflow](https://github.com/linuskendall/zed-spaces-launcher/actions/workflows/docs.yml).

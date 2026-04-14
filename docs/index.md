@@ -18,7 +18,7 @@ CLI and menu bar applet for starting or creating GitHub Codespaces and opening t
 
 ```bash
 # Install with Nix
-nix profile install github:ananthb/zed-spaces-launcher
+nix profile install github:linuskendall/zed-spaces-launcher
 
 # Or build from source
 go install github.com/ananth/codespace-zed@latest

@@ -37,16 +37,10 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Build package
-        run: nix build .#packages.aarch64-darwin.default -o result
-
-      - name: Create DMG
+      - name: Build DMG
         run: |
-          mkdir -p dmg-staging
-          cp result/bin/codespace-zed dmg-staging/
-          cp dist/codespace-zed.config.example.json dmg-staging/
-          hdiutil create -volname "codespace-zed" -srcfolder dmg-staging \
-            -ov -format UDZO dist-codespace-zed-macos-arm64.dmg
+          nix build .#packages.aarch64-darwin.release -o result-dmg
+          cp "$(readlink result-dmg)" dist-codespace-zed-macos-arm64.dmg
 
       - uses: actions/upload-artifact@v4
         with:

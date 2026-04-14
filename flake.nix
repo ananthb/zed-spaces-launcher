@@ -107,10 +107,12 @@
               arch = if system == "x86_64-linux" then "amd64" else "arm64";
             in
             pkgs.runCommand "codespace-zed-${arch}.tar.gz"
-              { nativeBuildInputs = [ pkgs.gzip ]; }
+              { nativeBuildInputs = [ pkgs.gzip pkgs.patchelf ]; }
               ''
                 mkdir -p codespace-zed
-                cp ${pkg}/bin/codespace-zed codespace-zed/
+                cp ${pkg}/bin/.codespace-zed-wrapped codespace-zed/codespace-zed
+                chmod +w codespace-zed/codespace-zed
+                patchelf --remove-rpath codespace-zed/codespace-zed
                 cp ${./dist/codespace-zed.config.example.json} codespace-zed/
                 cp ${./dist/codespace-zed.service} codespace-zed/
                 tar -czvf $out -C . codespace-zed
@@ -129,23 +131,36 @@
                 hash = "sha256-AMvfz5F8xsD/bTNH1Z4Moff0Wm3xpCig1tinhmTYdEQ=";
               });
 
-              libPath = pkgs.lib.makeLibraryPath (with pkgs; [
+              libDeps = with pkgs; [
                 glib gtk3 libayatana-appindicator pango cairo gdk-pixbuf atk
                 harfbuzz fontconfig freetype
                 xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXi
                 xorg.libXext xorg.libXrender xorg.libXfixes
                 xorg.libXcomposite xorg.libXdamage xorg.libxcb
                 libxkbcommon wayland
-              ]);
+              ];
+              libPath = pkgs.lib.makeLibraryPath libDeps;
             in
             pkgs.runCommand "codespace-zed-${arch}.AppImage"
-              { nativeBuildInputs = with pkgs; [ squashfsTools ]; }
+              { nativeBuildInputs = with pkgs; [ squashfsTools patchelf ]; }
               ''
                 mkdir -p AppDir/usr/bin
+                mkdir -p AppDir/usr/lib
                 mkdir -p AppDir/usr/share/applications
 
                 cp ${pkg}/bin/.codespace-zed-wrapped AppDir/usr/bin/codespace-zed
                 chmod +w AppDir/usr/bin/*
+                patchelf --remove-rpath AppDir/usr/bin/codespace-zed
+
+                # Bundle shared libraries so the AppImage is self-contained.
+                for dir in ${pkgs.lib.concatStringsSep " " (map (d: "${d}/lib") libDeps)}; do
+                  if [ -d "$dir" ]; then
+                    for so in "$dir"/*.so "$dir"/*.so.*; do
+                      [ -e "$so" ] || continue
+                      cp -n "$(readlink -f "$so")" "AppDir/usr/lib/$(basename "$so")" 2>/dev/null || true
+                    done
+                  fi
+                done
 
                 cat > AppDir/codespace-zed.desktop << 'DESKTOP'
                 [Desktop Entry]
@@ -162,11 +177,10 @@
                 set -e
                 SELF=$(readlink -f "$0")
                 APPDIR=''${SELF%/*}
-                export LD_LIBRARY_PATH="LIBPATH:''${LD_LIBRARY_PATH}"
+                export LD_LIBRARY_PATH="''${APPDIR}/usr/lib:''${LD_LIBRARY_PATH}"
                 export PATH="''${APPDIR}/usr/bin:''${PATH}"
                 exec "''${APPDIR}/usr/bin/codespace-zed" "$@"
                 APPRUN
-                sed -i "s|LIBPATH|${libPath}|g" AppDir/AppRun
                 chmod +x AppDir/AppRun
 
                 mksquashfs AppDir appimage.squashfs -root-owned -noappend -comp zstd -quiet -no-progress
@@ -181,10 +195,22 @@
               arch = if system == "x86_64-darwin" then "amd64" else "arm64";
             in
             pkgs.runCommand "codespace-zed-darwin-${arch}.dmg"
-              { nativeBuildInputs = [ pkgs.create-dmg ]; }
+              {
+                nativeBuildInputs = [ pkgs.cctools ];
+              }
               ''
+                export PATH="/usr/bin:$PATH"
                 mkdir -p staging
                 cp -rL "${pkg}/Applications/Codespace Zed.app" staging/
+                chmod -R u+w staging/
+
+                # Rewrite any /nix/store dylib references to /usr/lib
+                # so the binary works on non-Nix macOS systems.
+                bin="staging/Codespace Zed.app/Contents/MacOS/codespace-zed"
+                for dep in $(otool -L "$bin" | grep /nix/store | awk '{print $1}'); do
+                  base=$(basename "$dep")
+                  install_name_tool -change "$dep" "/usr/lib/$base" "$bin"
+                done
 
                 # Script that symlinks the CLI binary into /usr/local/bin
                 # so users can run codespace-zed from the terminal.
@@ -204,17 +230,11 @@
                 SCRIPT
                 chmod +x staging/Install\ CLI.command
 
-                # create-dmg returns exit code 2 when it succeeds but
-                # skips the code-signing step (expected in a sandbox).
-                create-dmg \
-                  --volname "Codespace Zed" \
-                  --window-size 600 400 \
-                  --icon-size 128 \
-                  --icon "Codespace Zed.app" 150 190 \
-                  --app-drop-link 450 190 \
-                  $out \
-                  staging/ \
-                || test $? -eq 2
+                # Applications symlink for drag-and-drop install
+                ln -s /Applications staging/Applications
+
+                hdiutil create -volname "Codespace Zed" -srcfolder staging \
+                  -ov -format UDZO $out
               '';
         };
 

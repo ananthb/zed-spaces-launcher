@@ -56,9 +56,9 @@ func (cosmoTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color.Col
 	case theme.ColorNamePrimary:
 		return cLime
 	case theme.ColorNameHover:
-		return color.NRGBA{0x2a, 0x2b, 0x2f, 0xff} // lighter than surface2 for visible hover
+		return color.NRGBA{0xff, 0xff, 0xff, 0x15} // subtle white overlay — works on both dark and lime
 	case theme.ColorNamePressed:
-		return color.NRGBA{0x33, 0x34, 0x38, 0xff}
+		return color.NRGBA{0xff, 0xff, 0xff, 0x22}
 	case theme.ColorNameFocus:
 		return color.NRGBA{0xa3, 0xe6, 0x35, 0x40}
 	case theme.ColorNameSelection:

@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	cosmoWinW float32 = 820
-	cosmoWinH float32 = 520
+	cosmoWinW float32 = 680
+	cosmoWinH float32 = 460
 )
 
 // newCosmoWindow replaces newUnifiedWindow. Swap the call site in
@@ -252,7 +252,7 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 		openBtn.SetText(fmt.Sprintf("Open in %s", val))
 	}
 
-	deleteBtn := widget.NewButton("Delete", func() {
+	deleteBtn := destructiveButton("Delete", func() {
 		go func() {
 			_ = codespace.DeleteCodespace(uw.daemon.Runner, cs.Name)
 			fyne.Do(func() {

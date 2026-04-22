@@ -1,8 +1,55 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
-  <path d="M5.5 16 Q5.5 18.5,8 18.5 L20 18.5 Q23.5 18.5,23.5 15 Q23.5 12,20.5 11.5 Q21 10.5,21 9.5 Q21 6.5,17.5 6.5 Q16 4.5,12.5 4.5 Q9 5,8.5 8 Q6 8,5.5 10.5 Q3.5 11,3.5 13.5 Q3.5 16,5.5 16 Z" fill="#c8c8c8"/>
-  <path d="M13 9.5 L18.5 9.5 L13 15.5 L18.5 15.5" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <g opacity="0.65">
-    <path d="M7.7 10.8 L9.2 12.2 L7.7 13.6" fill="none" stroke="#1a1a1a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="7.4" y1="15.1" x2="9.6" y2="15.1" stroke="#1a1a1a" stroke-width="1.2" stroke-linecap="round"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#0f0f1a"/>
+    </linearGradient>
+    <linearGradient id="rocket" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8e8f0"/>
+      <stop offset="100%" stop-color="#b0b0c0"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff6b35"/>
+      <stop offset="50%" stop-color="#ff4500"/>
+      <stop offset="100%" stop-color="#ffcc02"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background: rounded square -->
+  <rect x="4" y="4" width="120" height="120" rx="24" fill="url(#bg)"/>
+
+  <!-- Stars -->
+  <circle cx="20" cy="25" r="1.2" fill="#ffffff" opacity="0.6"/>
+  <circle cx="105" cy="20" r="1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="95" cy="45" r="0.8" fill="#ffffff" opacity="0.4"/>
+  <circle cx="25" cy="95" r="1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="110" cy="85" r="1.2" fill="#ffffff" opacity="0.4"/>
+  <circle cx="15" cy="60" r="0.8" fill="#ffffff" opacity="0.3"/>
+
+  <!-- C letter — wraps around the A-rocket -->
+  <path d="M42 35 Q18 35,18 64 Q18 93,42 95"
+        fill="none" stroke="#7B68EE" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- A as rocket body -->
+  <path d="M64 16 L78 88 L72 88 L64 62 L56 88 L50 88 Z"
+        fill="url(#rocket)" stroke="#9090a8" stroke-width="1"/>
+
+  <!-- A crossbar / window -->
+  <ellipse cx="64" cy="52" rx="5" ry="4" fill="#4488cc" stroke="#5599dd" stroke-width="0.8"/>
+
+  <!-- Rocket fins -->
+  <path d="M50 88 L40 102 L54 90" fill="#7B68EE" opacity="0.8"/>
+  <path d="M78 88 L88 102 L74 90" fill="#7B68EE" opacity="0.8"/>
+
+  <!-- Exhaust flame -->
+  <path d="M58 88 Q64 108,70 88 Q67 100,64 110 Q61 100,58 88"
+        fill="url(#flame)" opacity="0.9"/>
+
+  <!-- Connection dots (representing active codespaces) -->
+  <circle cx="100" cy="40" r="4" fill="#50fa7b" opacity="0.8"/>
+  <circle cx="100" cy="56" r="3" fill="#50fa7b" opacity="0.5"/>
+
+  <!-- Subtle connecting lines from dots to rocket -->
+  <line x1="96" y1="40" x2="78" y2="45" stroke="#50fa7b" stroke-width="0.8" opacity="0.3"/>
+  <line x1="97" y1="56" x2="78" y2="55" stroke="#50fa7b" stroke-width="0.8" opacity="0.3"/>
 </svg>

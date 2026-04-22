@@ -107,6 +107,10 @@ func (uw *unifiedWindow) buildCosmoSidebar() fyne.CanvasObject {
 	uw.tree.OnSelected = func(id widget.TreeNodeID) {
 		if isRepoNode(id) {
 			repo := repoFromNode(id)
+			// Auto-expand repos that have codespaces.
+			if len(codespace.FilterByRepo(uw.daemon.Codespaces(), repo)) > 0 {
+				uw.tree.OpenBranch(id)
+			}
 			uw.showCosmoRepoSummary(repo)
 		} else if isCsNode(id) {
 			csName := csNameFromNode(id)
@@ -371,27 +375,53 @@ func (uw *unifiedWindow) showCosmoCreateNew(repo string) {
 	hint.TextSize = 12
 
 	repoLbl := widget.NewLabel(repo)
-	branchSel := widget.NewSelect([]string{"main", "develop"}, func(string) {})
-	branchSel.Selected = "main"
+
+	// Branch selector — starts with config branch or "main", fetches real branches async.
+	defaultBranch := target.Branch
+	if defaultBranch == "" {
+		defaultBranch = "main"
+	}
+	branchSel := widget.NewSelect([]string{defaultBranch}, func(string) {})
+	branchSel.Selected = defaultBranch
+
+	// Fetch branches in background.
+	if repo != "" {
+		go func() {
+			branches := fetchBranches(uw.daemon.Runner, repo)
+			if len(branches) > 0 {
+				fyne.Do(func() {
+					branchSel.Options = branches
+					// Keep current selection if it's in the list.
+					found := false
+					for _, b := range branches {
+						if b == branchSel.Selected {
+							found = true
+							break
+						}
+					}
+					if !found {
+						branchSel.Selected = branches[0]
+					}
+					branchSel.Refresh()
+				})
+			}
+		}()
+	}
 
 	labelEntry := widget.NewEntry()
 	labelEntry.PlaceHolder = "e.g. fix indexer health checks"
-
-	machines := widget.NewRadioGroup([]string{"2-core", "4-core", "8-core", "16-core"}, func(string) {})
-	machines.Horizontal = true
-	machines.Selected = "4-core"
 
 	form := widget.NewForm(
 		widget.NewFormItem("Repository", repoLbl),
 		widget.NewFormItem("Branch", branchSel),
 		widget.NewFormItem("Label", labelEntry),
-		widget.NewFormItem("Machine", machines),
 	)
 
 	createBtn := primaryButton("Create and open", func() {
 		text := strings.TrimSpace(labelEntry.Text)
 		createTarget := target
 		createTarget.DisplayName = text
+		createTarget.Branch = branchSel.Selected
 		uw.daemon.runCreateAndLaunch(uw.win, createTarget, resolvedName)
 	})
 	cancelBtn := widget.NewButton("Cancel", func() { uw.showCosmoWelcome() })
@@ -405,5 +435,37 @@ func (uw *unifiedWindow) showCosmoCreateNew(repo string) {
 		actions,
 	))
 	uw.setContent(container.NewScroll(body))
+}
+
+// fetchBranches returns branch names for a repo, default branch first.
+func fetchBranches(runner codespace.GHRunner, repo string) []string {
+	// Get default branch.
+	defOut, err := runner.Run([]string{
+		"api", fmt.Sprintf("repos/%s", repo),
+		"--jq", ".default_branch",
+	})
+	defaultBranch := strings.TrimSpace(defOut)
+	if err != nil || defaultBranch == "" {
+		defaultBranch = "main"
+	}
+
+	// Get all branches.
+	out, err := runner.Run([]string{
+		"api", fmt.Sprintf("repos/%s/branches", repo),
+		"--paginate", "--jq", ".[].name",
+	})
+	if err != nil {
+		return []string{defaultBranch}
+	}
+
+	var branches []string
+	branches = append(branches, defaultBranch) // default first
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		b := strings.TrimSpace(line)
+		if b != "" && b != defaultBranch {
+			branches = append(branches, b)
+		}
+	}
+	return branches
 }
 

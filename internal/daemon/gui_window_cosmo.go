@@ -220,11 +220,6 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 
 	target, resolvedName := guiTargetForRepo(uw.daemon.Cfg, repo)
 
-	// Header: breadcrumbs + "⋯" overflow
-	crumbs := canvas.NewText(fmt.Sprintf("%s  /  %s", repo, csLabel(*cs)), cTextDim)
-	crumbs.TextSize = 12
-	header := container.NewPadded(container.NewBorder(nil, nil, crumbs, nil))
-
 	// Hero: state pill + title + primary/secondary actions
 	stateLbl := canvas.NewText(strings.ToUpper(cs.State), stateColor(cs.State))
 	stateLbl.TextSize = 10
@@ -262,14 +257,6 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 		}()
 	})
 
-	heroLeft := container.NewVBox(statusRow, heroTitle, heroName)
-	heroRight := container.NewVBox(
-		container.NewHBox(openBtn, editorSel),
-		deleteBtn,
-	)
-	hero := surfaceCard(container.NewBorder(nil, nil, nil, heroRight, heroLeft))
-
-	// Meta grid
 	branchStr := ""
 	if cs.GitStatus != nil {
 		branchStr = cs.GitStatus.Ref
@@ -277,38 +264,22 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 			branchStr = cs.GitStatus.Branch
 		}
 	}
-	meta := container.NewGridWithColumns(4,
-		metaCell("BRANCH", branchStr, true),
-		metaCell("MACHINE", "4-core · Linux", false),
-		metaCell("REGION", "us-west-2", true),
-		metaCell("LAST USED", "2 min ago", false),
+	branchLbl := canvas.NewText(branchStr, cTextDim)
+	branchLbl.TextSize = 11
+	branchLbl.TextStyle = fyne.TextStyle{Monospace: true}
+
+	heroInfo := container.NewVBox(statusRow, heroTitle, heroName, branchLbl)
+	actions := container.NewVBox(
+		container.NewHBox(openBtn, editorSel),
+		deleteBtn,
 	)
 
-	// SSH connection info
-	sshInfo := widget.NewLabel(fmt.Sprintf(
-		"host  cs.%s.github.dev\nuser  codespace\nport  2222\npath  %s",
-		cs.Name, target.WorkspacePath,
-	))
-	sshInfo.TextStyle = fyne.TextStyle{Monospace: true}
-	sshCard := surfaceCard(container.NewVBox(
-		caption("SSH CONNECTION"),
-		sshInfo,
-	))
-
-	// Git status
-	gitStatus := widget.NewLabel(fmt.Sprintf("%s", branchStr))
-	gitStatus.TextStyle = fyne.TextStyle{Monospace: true}
-	gitCard := surfaceCard(container.NewVBox(
-		caption("GIT STATUS"),
-		gitStatus,
-	))
-
-	panels := container.NewVBox(sshCard, gitCard)
-
-	body := container.NewVBox(hero, meta, panels)
-	uw.setContent(container.NewBorder(header, nil, nil, nil,
-		container.NewPadded(container.NewVScroll(container.NewPadded(body))),
-	))
+	body := container.NewVBox(
+		heroInfo,
+		widget.NewSeparator(),
+		actions,
+	)
+	uw.setContent(container.NewPadded(body))
 }
 
 func stateColor(state string) color.Color {

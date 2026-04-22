@@ -107,7 +107,7 @@ func (uw *unifiedWindow) buildCosmoSidebar() fyne.CanvasObject {
 	uw.tree.OnSelected = func(id widget.TreeNodeID) {
 		if isRepoNode(id) {
 			repo := repoFromNode(id)
-			uw.showRepoSummary(repo)
+			uw.showCosmoRepoSummary(repo)
 		} else if isCsNode(id) {
 			csName := csNameFromNode(id)
 			repo := repoFromCsNode(id)
@@ -135,29 +135,47 @@ func (uw *unifiedWindow) buildCosmoSidebar() fyne.CanvasObject {
 	return container.NewBorder(top, bottom, nil, nil, uw.tree)
 }
 
-// buildAccountFooter shows the signed-in GitHub handle + settings button.
+// buildAccountFooter shows the signed-in GitHub handle with a small status dot.
 func (uw *unifiedWindow) buildAccountFooter() fyne.CanvasObject {
-	handle := canvas.NewText("ananthb", cText)
+	// Try to get the GitHub username.
+	ghUser := "not authenticated"
+	authed := false
+	if out, err := uw.daemon.Runner.Run([]string{"auth", "status", "--hostname", "github.com"}); err == nil {
+		// Parse "Logged in to github.com account <user>" from output.
+		for _, line := range strings.Split(out, "\n") {
+			if idx := strings.Index(line, "account "); idx >= 0 {
+				parts := strings.Fields(line[idx:])
+				if len(parts) >= 2 {
+					ghUser = parts[1]
+					authed = true
+				}
+				break
+			}
+		}
+		if !authed {
+			ghUser = "authenticated"
+			authed = true
+		}
+	}
+
+	dot := stateDot(func() string {
+		if authed {
+			return "Available"
+		}
+		return "Stopped"
+	}())
+
+	handle := canvas.NewText(ghUser, cText)
 	handle.TextSize = 12
 	handle.TextStyle = fyne.TextStyle{Bold: true}
 
-	sub := canvas.NewText("gh · authenticated", cTextMute)
+	sub := canvas.NewText("github.com", cTextMute)
 	sub.TextSize = 10
 	sub.TextStyle = fyne.TextStyle{Monospace: true}
 
-	avatar := canvas.NewCircle(cLime)
-	avatar.Resize(fyne.NewSize(22, 22))
-	avatarBox := container.NewWithoutLayout(avatar)
-	avatarBox.Resize(fyne.NewSize(22, 22))
-
-	settingsBtn := widget.NewButtonWithIcon("Settings", nil, func() {
-		uw.showCosmoSettings()
-	})
-	settingsBtn.Importance = widget.LowImportance
-
 	info := container.NewVBox(handle, sub)
 	return container.NewPadded(
-		container.NewBorder(nil, nil, avatarBox, settingsBtn, info),
+		container.NewHBox(dot, info),
 	)
 }
 
@@ -311,6 +329,31 @@ func (uw *unifiedWindow) showCosmoWelcome() {
 	)))
 }
 
+// ── REPO SUMMARY ───────────────────────────────────────────────────────
+
+func (uw *unifiedWindow) showCosmoRepoSummary(repo string) {
+	all := uw.daemon.Codespaces()
+	repoCS := codespace.FilterByRepo(all, repo)
+
+	title := canvas.NewText(repo, cText)
+	title.TextSize = 18
+	title.TextStyle = fyne.TextStyle{Bold: true}
+
+	countText := fmt.Sprintf("%d codespace(s)", len(repoCS))
+	info := canvas.NewText(countText, cTextDim)
+	info.TextSize = 13
+
+	createBtn := primaryButton("Create new codespace", func() {
+		uw.showCosmoCreateNew(repo)
+	})
+
+	uw.setContent(container.NewCenter(container.NewVBox(
+		title, info,
+		widget.NewSeparator(),
+		createBtn,
+	)))
+}
+
 // ── CREATE ──────────────────────────────────────────────────────────────
 
 func (uw *unifiedWindow) showCreateNewGeneric() {
@@ -364,11 +407,3 @@ func (uw *unifiedWindow) showCosmoCreateNew(repo string) {
 	uw.setContent(container.NewScroll(body))
 }
 
-// ── SETTINGS ────────────────────────────────────────────────────────────
-
-func (uw *unifiedWindow) showCosmoSettings() {
-	uw.tree.UnselectAll()
-	uw.setContent(container.NewScroll(container.NewPadded(
-		uw.daemon.buildSettingsPanel(uw.win),
-	)))
-}

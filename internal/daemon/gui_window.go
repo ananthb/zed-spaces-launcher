@@ -73,13 +73,9 @@ func (d *Daemon) newUnifiedWindow() *unifiedWindow {
 
 	uw.tree = uw.buildTree()
 
-	settingsBtn := widget.NewButton("Settings", func() {
-		uw.showSettings()
-	})
-
 	sidebar := container.NewBorder(
 		container.NewPadded(filterEntry), // top
-		settingsBtn,                      // bottom
+		nil,                              // bottom
 		nil, nil,
 		uw.tree, // center
 	)
@@ -362,13 +358,6 @@ func (uw *unifiedWindow) showCreateNew(repo string) {
 		)),
 		layout.NewSpacer(),
 	))
-}
-
-// --- Settings panel ---
-
-func (uw *unifiedWindow) showSettings() {
-	uw.tree.UnselectAll()
-	uw.setContent(uw.daemon.buildSettingsPanel(uw.win))
 }
 
 // --- Helper functions ---

@@ -63,9 +63,10 @@ func isAppBundle() bool {
 
 func rootCmd() *cobra.Command {
 	var (
-		configPath string
-		noOpen     bool
-		dryRun     bool
+		configPath    string
+		noOpen        bool
+		dryRun        bool
+		codespaceName string
 	)
 
 	cmd := &cobra.Command{
@@ -89,13 +90,14 @@ Config file fields:
 			if len(args) > 0 {
 				targetName = args[0]
 			}
-			return run(configPath, targetName, noOpen, dryRun)
+			return run(configPath, targetName, codespaceName, noOpen, dryRun)
 		},
 	}
 
 	cmd.PersistentFlags().StringVar(&configPath, "config", defaultConfigPath, "path to config file")
 	cmd.Flags().BoolVar(&noOpen, "no-open", false, "update SSH/Zed config and print target without launching Zed")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "do not create codespace or launch Zed")
+	cmd.Flags().StringVar(&codespaceName, "codespace", "", "launch a specific codespace by name (skip selection)")
 
 	_ = cmd.RegisterFlagCompletionFunc("config", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return nil, cobra.ShellCompDirectiveFilterFileExt
@@ -132,7 +134,7 @@ func completeTargets(configPath *string) func(*cobra.Command, []string, string) 
 	}
 }
 
-func run(configPath, targetName string, noOpen, dryRun bool) error {
+func run(configPath, targetName, codespaceName string, noOpen, dryRun bool) error {
 	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
 		return err
@@ -193,7 +195,30 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 		return fmt.Errorf("no target was provided and config.defaultTarget is not set")
 	}
 
-	if dynamicMode {
+	// Direct codespace launch — bypass all TUI selection.
+	if codespaceName != "" {
+		if target.Repository == "" {
+			return fmt.Errorf("--codespace requires a target or repo argument to resolve workspace settings")
+		}
+		// Fetch full codespace details so we have state for the fast path.
+		out, csErr := runner.Run([]string{
+			"codespace", "view",
+			"--codespace", codespaceName,
+			"--json", "name,displayName,repository,state,gitStatus",
+		})
+		if csErr != nil {
+			return fmt.Errorf("looking up codespace %q: %w", codespaceName, csErr)
+		}
+		var cs codespace.Codespace
+		if csErr := json.Unmarshal([]byte(out), &cs); csErr != nil {
+			return fmt.Errorf("parsing codespace %q: %w", codespaceName, csErr)
+		}
+		selected = &cs
+	}
+
+	if selected != nil {
+		// Already resolved (e.g. --codespace flag); skip selection.
+	} else if dynamicMode {
 		// Fetch all codespaces and all user repos for the repo picker.
 		var allCodespaces []codespace.Codespace
 		var allUserRepos []string

@@ -164,3 +164,109 @@ func (d *Daemon) showPopover(args ...string) {
 		}
 	})
 }
+
+// showGHAuthLogin opens a popover running `gh auth login --web`.
+func (d *Daemon) showGHAuthLogin() {
+	if d.app == nil {
+		log.Println("auth-login: app not initialized")
+		return
+	}
+
+	ghPath, err := exec.LookPath("gh")
+	if err != nil {
+		log.Printf("auth-login: gh not found on PATH: %v", err)
+		return
+	}
+
+	cmd := exec.Command(ghPath, "auth", "login", "--web")
+	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
+
+	initialSize := &pty.Winsize{Rows: 30, Cols: 80}
+	ptmx, err := pty.StartWithSize(cmd, initialSize)
+	if err != nil {
+		log.Printf("auth-login: pty start: %v", err)
+		return
+	}
+
+	term := terminal.New()
+
+	done := make(chan struct{})
+	var closeOnce sync.Once
+	cleanup := func() {
+		closeOnce.Do(func() {
+			close(done)
+			ptmx.Close()
+			if cmd.Process != nil {
+				cmd.Process.Kill()
+			}
+		})
+	}
+
+	configCh := make(chan terminal.Config, 1)
+	term.AddListener(configCh)
+	go func() {
+		defer term.RemoveListener(configCh)
+		for {
+			select {
+			case cfg, ok := <-configCh:
+				if !ok {
+					return
+				}
+				if cfg.Rows > 0 && cfg.Columns > 0 {
+					pty.Setsize(ptmx, &pty.Winsize{
+						Rows: uint16(cfg.Rows),
+						Cols: uint16(cfg.Columns),
+					})
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	childDone := make(chan error, 1)
+	go func() {
+		childDone <- cmd.Wait()
+	}()
+
+	shown := make(chan fyne.Window, 1)
+	fyne.Do(func() {
+		w := d.app.NewWindow("GitHub Login")
+		w.SetPadded(false)
+		w.Resize(fyne.NewSize(700, 500))
+		w.CenterOnScreen()
+		w.SetContent(term)
+		w.SetOnClosed(func() {
+			cleanup()
+		})
+		w.Show()
+		shown <- w
+	})
+
+	w := <-shown
+
+	termErr := term.RunWithConnection(ptmx, ptmx)
+	log.Printf("auth-login: terminal finished (err=%v)", termErr)
+
+	var childExitErr error
+	select {
+	case childExitErr = <-childDone:
+		log.Printf("auth-login: child exited (err=%v)", childExitErr)
+	case <-time.After(500 * time.Millisecond):
+		log.Printf("auth-login: terminal disconnected, child still running")
+	}
+
+	if childExitErr != nil {
+		log.Printf("auth-login: keeping window open (child failed)")
+		<-done
+		return
+	}
+
+	cleanup()
+	d.rebuildTrayMenu()
+	fyne.Do(func() {
+		if w != nil {
+			w.Close()
+		}
+	})
+}

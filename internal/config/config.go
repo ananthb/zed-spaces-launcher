@@ -76,6 +76,17 @@ func LoadConfig(path string) (*Config, error) {
 	return &cfg, nil
 }
 
+// SaveConfig writes the config to the given path as formatted JSON
+// with 4-space indentation for easy hand-editing.
+func SaveConfig(path string, cfg *Config) error {
+	data, err := json.MarshalIndent(cfg, "", "    ")
+	if err != nil {
+		return fmt.Errorf("marshaling config: %w", err)
+	}
+	data = append(data, '\n')
+	return os.WriteFile(path, data, 0644)
+}
+
 // FieldDoc describes a single config target field for generated documentation.
 type FieldDoc struct {
 	JSON     string // JSON key name

@@ -18,7 +18,6 @@ func (d *Daemon) startPoller() {
 		}
 	}
 
-	d.poll() // initial poll
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -39,6 +38,8 @@ func (d *Daemon) poll() {
 		return
 	}
 
+	log.Printf("poll: fetched %d codespaces", len(codespaces))
+
 	old := d.Codespaces()
 	d.SetCodespaces(codespaces)
 
@@ -47,6 +48,7 @@ func (d *Daemon) poll() {
 	}
 	d.checkAutoStop(codespaces)
 	d.updateTrayIcon(codespaces)
+	d.rebuildTrayMenu()
 }
 
 // updateTrayIcon switches between idle (hollow) and active (filled) icons

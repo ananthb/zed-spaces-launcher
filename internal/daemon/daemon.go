@@ -50,6 +50,10 @@ func (d *Daemon) Run() error {
 
 	log.Printf("applet started (pid %d)", os.Getpid())
 
+	// Run the initial poll synchronously so the tray menu has
+	// codespace data before it is first displayed.
+	d.poll()
+
 	// Start background workers.
 	go d.startPoller()
 	go d.startHotkeyListener()

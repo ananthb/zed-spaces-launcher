@@ -235,17 +235,20 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 
 	statusRow := container.NewHBox(stateDot(cs.State), stateLbl)
 
-	// Editor selector — default editor + alternatives.
-	defaultEditor := uw.daemon.getEditor()
-	editorSel := widget.NewSelect([]string{"zed", "neovim"}, nil)
-	editorSel.Selected = defaultEditor.Name()
-
-	openBtn := primaryButton(fmt.Sprintf("Open in %s", defaultEditor.Name()), func() {
-		uw.daemon.runLaunchFlow(uw.win, target, resolvedName, cs)
+	// Editor selector — pick which editor to open with.
+	selectedEditor := uw.daemon.getEditor().Name()
+	editorSel := widget.NewSelect([]string{"zed", "neovim"}, func(val string) {
+		selectedEditor = val
 	})
-	editorSel.OnChanged = func(val string) {
-		openBtn.SetText(fmt.Sprintf("Open in %s", val))
-	}
+	editorSel.Selected = selectedEditor
+
+	openBtn := primaryButton("Open", func() {
+		// Temporarily set the config editor to the selected one for this launch.
+		origEditor := uw.daemon.Cfg.Editor
+		uw.daemon.Cfg.Editor = selectedEditor
+		uw.daemon.runLaunchFlow(uw.win, target, resolvedName, cs)
+		uw.daemon.Cfg.Editor = origEditor
+	})
 
 	deleteBtn := destructiveButton("Delete", func() {
 		go func() {

@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/ananth/cosmonaut/internal/config"
 )
@@ -277,15 +278,36 @@ func DeleteCodespace(runner GHRunner, name string) error {
 }
 
 // EnsureReachable verifies the codespace SSH server is accessible.
+// It retries with exponential backoff since the codespace may be
+// starting up or the SSH tunnel may be slow to establish.
 func EnsureReachable(runner GHRunner, codespaceName string) error {
-	_, err := runner.Run([]string{"codespace", "ssh", "--codespace", codespaceName, "--", "true"})
-	if err != nil {
-		return fmt.Errorf("could not start or SSH into codespace %q: %w", codespaceName, err)
+	var lastErr error
+	delays := []time.Duration{0, 2 * time.Second, 5 * time.Second, 10 * time.Second}
+	for i, delay := range delays {
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+		_, err := runner.Run([]string{"codespace", "ssh", "--codespace", codespaceName, "--", "true"})
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if i < len(delays)-1 {
+			// Log retry for debugging.
+			fmt.Fprintf(os.Stderr, "  SSH attempt %d failed, retrying...\n", i+1)
+		}
 	}
-	return nil
+	return fmt.Errorf("could not SSH into codespace %q after %d attempts: %w", codespaceName, len(delays), lastErr)
 }
 
 // GetSSHConfig retrieves the OpenSSH config for a codespace.
+// Retries once on failure since the SSH tunnel may not be ready immediately
+// after EnsureReachable succeeds.
 func GetSSHConfig(runner GHRunner, codespaceName string) (string, error) {
+	out, err := runner.Run([]string{"codespace", "ssh", "--codespace", codespaceName, "--config"})
+	if err == nil {
+		return out, nil
+	}
+	time.Sleep(2 * time.Second)
 	return runner.Run([]string{"codespace", "ssh", "--codespace", codespaceName, "--config"})
 }

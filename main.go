@@ -66,12 +66,13 @@ func rootCmd() *cobra.Command {
 		noOpen        bool
 		dryRun        bool
 		codespaceName string
+		editorFlag    string
 	)
 
 	cmd := &cobra.Command{
 		Use:   "cosmonaut [target]",
-		Short: "Start or create GitHub Codespaces and open them in Zed",
-		Long: `cosmonaut connects GitHub Codespaces to Zed via SSH remoting.
+		Short: "Start or create GitHub Codespaces and open them in your editor",
+		Long: `cosmonaut connects GitHub Codespaces to your editor via SSH remoting.
 
 When a target name is given, its definition is read from the config file.
 Without a target, an interactive TUI lets you pick a repository (with
@@ -89,7 +90,7 @@ Config file fields:
 			if len(args) > 0 {
 				targetName = args[0]
 			}
-			return run(configPath, targetName, codespaceName, noOpen, dryRun)
+			return run(configPath, targetName, codespaceName, editorFlag, noOpen, dryRun)
 		},
 	}
 
@@ -97,6 +98,7 @@ Config file fields:
 	cmd.Flags().BoolVar(&noOpen, "no-open", false, "update SSH/Zed config and print target without launching Zed")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "do not create codespace or launch Zed")
 	cmd.Flags().StringVar(&codespaceName, "codespace", "", "launch a specific codespace by name (skip selection)")
+	cmd.Flags().StringVar(&editorFlag, "editor", "", "editor to use: zed (default) or neovim")
 
 	_ = cmd.RegisterFlagCompletionFunc("config", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return nil, cobra.ShellCompDirectiveFilterFileExt
@@ -133,7 +135,7 @@ func completeTargets(configPath *string) func(*cobra.Command, []string, string) 
 	}
 }
 
-func run(configPath, targetName, codespaceName string, noOpen, dryRun bool) error {
+func run(configPath, targetName, codespaceName, editorFlag string, noOpen, dryRun bool) error {
 	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
 		return err
@@ -470,9 +472,9 @@ func run(configPath, targetName, codespaceName string, noOpen, dryRun bool) erro
 	hist.Touch(target.Repository)
 	hist.Save()
 
-	// Resolve the editor to use.
-	editorName := ""
-	if cfg != nil {
+	// Resolve the editor to use (CLI flag overrides config).
+	editorName := editorFlag
+	if editorName == "" && cfg != nil {
 		editorName = cfg.Editor
 	}
 	ed, err := editor.ForName(editorName)

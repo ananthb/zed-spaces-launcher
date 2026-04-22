@@ -97,10 +97,24 @@ func ReadExistingAlias(includeDir, codespaceName string) (string, bool) {
 	return alias, true
 }
 
-// WriteCodespaceConfig writes the SSH config for a specific codespace.
+// sshKeepAlive is appended to every codespace SSH config for connection
+// reliability. ServerAliveInterval pings the server every 15s,
+// ServerAliveCountMax drops after 3 missed pongs (45s timeout), and
+// ConnectionAttempts retries the initial connection up to 3 times.
+const sshKeepAlive = `  ServerAliveInterval 15
+  ServerAliveCountMax 3
+  ConnectionAttempts 3
+`
+
+// WriteCodespaceConfig writes the SSH config for a specific codespace,
+// appending keepalive options for connection reliability.
 func WriteCodespaceConfig(includeDir, codespaceName, content string) error {
 	if err := os.MkdirAll(includeDir, 0700); err != nil {
 		return err
+	}
+	// Append keepalive options if not already present.
+	if !strings.Contains(content, "ServerAliveInterval") {
+		content = strings.TrimRight(content, "\n") + "\n" + sshKeepAlive
 	}
 	path := filepath.Join(includeDir, codespaceName+".conf")
 	return os.WriteFile(path, []byte(content), 0644)

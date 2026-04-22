@@ -18,12 +18,12 @@ jobs:
       - name: Build release tarball
         run: |
           nix build .#packages.x86_64-linux.release -o result-release
-          cp "$(readlink result-release)" dist-codespace-zed-amd64.tar.gz
+          cp "$(readlink result-release)" dist-cosmonaut-amd64.tar.gz
 
       - name: Build AppImage
         run: |
           nix build .#packages.x86_64-linux.appimage -o result-appimage
-          cp "$(readlink result-appimage)" dist-codespace-zed-amd64.AppImage
+          cp "$(readlink result-appimage)" dist-cosmonaut-amd64.AppImage
 
       - uses: actions/upload-artifact@v4
         with:
@@ -43,10 +43,10 @@ jobs:
       - name: Create DMG
         run: |
           mkdir -p dmg-staging
-          cp result/bin/codespace-zed dmg-staging/
-          cp dist/codespace-zed.config.example.json dmg-staging/
-          hdiutil create -volname "codespace-zed" -srcfolder dmg-staging \
-            -ov -format UDZO dist-codespace-zed-macos-arm64.dmg
+          cp result/bin/cosmonaut dmg-staging/
+          cp dist/cosmonaut.config.example.json dmg-staging/
+          hdiutil create -volname "cosmonaut" -srcfolder dmg-staging \
+            -ov -format UDZO dist-cosmonaut-macos-arm64.dmg
 
       - uses: actions/upload-artifact@v4
         with:

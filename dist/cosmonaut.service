@@ -1,12 +1,12 @@
 [Unit]
-Description=codespace-zed menu bar applet
+Description=cosmonaut menu bar applet
 Documentation=https://github.com/linuskendall/zed-spaces-launcher
 After=graphical-session.target
 PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/codespace-zed applet
+ExecStart=%h/.local/bin/cosmonaut applet
 Restart=on-failure
 RestartSec=5
 

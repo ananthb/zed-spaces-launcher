@@ -1,7 +1,7 @@
-# codespace-zed
+# cosmonaut
 
 <p align="center">
-  <img src="logo.svg" width="128" height="128" alt="codespace-zed logo">
+  <img src="logo.svg" width="128" height="128" alt="cosmonaut logo">
 </p>
 
 CLI and menu bar applet for starting or creating GitHub Codespaces and opening them in [Zed](https://zed.dev) via SSH remoting.
@@ -21,13 +21,13 @@ CLI and menu bar applet for starting or creating GitHub Codespaces and opening t
 nix profile install github:linuskendall/zed-spaces-launcher
 
 # Or build from source
-go install github.com/ananth/codespace-zed@latest
+go install github.com/ananth/cosmonaut@latest
 
 # Run interactively
-codespace-zed
+cosmonaut
 
 # Or with a named target from config
-codespace-zed work
+cosmonaut work
 ```
 
 ## Menu bar applet
@@ -35,7 +35,7 @@ codespace-zed work
 The applet provides a system tray icon with quick access to your codespaces, a global hotkey, and lifecycle management (auto-stop, pre-warm).
 
 ```bash
-codespace-zed applet
+cosmonaut applet
 ```
 
 See [Menu Bar Applet](applet.md) for details.

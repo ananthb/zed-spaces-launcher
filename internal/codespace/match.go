@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ananth/codespace-zed/internal/config"
+	"github.com/ananth/cosmonaut/internal/config"
 )
 
 // MatchesTarget checks whether a codespace matches a config target.

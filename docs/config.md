@@ -1,8 +1,8 @@
 # Configuration
 
-codespace-zed uses a JSONC config file (comments and trailing commas are supported).
+cosmonaut uses a JSONC config file (comments and trailing commas are supported).
 
-The default path is `codespace-zed.config.json` in the current directory for the CLI, or `~/.config/codespace-zed/config.json` (XDG) for the applet.
+The default path is `cosmonaut.config.json` in the current directory for the CLI, or `~/.config/cosmonaut/config.json` (XDG) for the applet.
 
 ## Example
 

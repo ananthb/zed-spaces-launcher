@@ -1,11 +1,11 @@
-// codespace-zed starts or creates GitHub Codespaces and opens them in Zed
+// cosmonaut starts or creates GitHub Codespaces and opens them in Zed
 // via SSH remoting.
 //
 // The tool performs the following steps:
 //  1. Authenticate with GitHub via the gh CLI
 //  2. Resolve a target repository and codespace (interactive or from config)
 //  3. Create a codespace if no match exists
-//  4. Fetch the codespace's SSH config and write it to ~/.ssh/codespaces-zed/
+//  4. Fetch the codespace's SSH config and write it to ~/.ssh/cosmonaut/
 //  5. Upsert a remote connection in Zed's settings.json
 //  6. Launch Zed with the ssh:// remote URL
 package main
@@ -23,16 +23,16 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/ananth/codespace-zed/internal/codespace"
-	"github.com/ananth/codespace-zed/internal/config"
-	"github.com/ananth/codespace-zed/internal/history"
-	"github.com/ananth/codespace-zed/internal/slug"
-	"github.com/ananth/codespace-zed/internal/sshconfig"
-	"github.com/ananth/codespace-zed/internal/tui"
-	"github.com/ananth/codespace-zed/internal/zed"
+	"github.com/ananth/cosmonaut/internal/codespace"
+	"github.com/ananth/cosmonaut/internal/config"
+	"github.com/ananth/cosmonaut/internal/history"
+	"github.com/ananth/cosmonaut/internal/slug"
+	"github.com/ananth/cosmonaut/internal/sshconfig"
+	"github.com/ananth/cosmonaut/internal/tui"
+	"github.com/ananth/cosmonaut/internal/zed"
 )
 
-const defaultConfigPath = "codespace-zed.config.json"
+const defaultConfigPath = "cosmonaut.config.json"
 
 func main() {
 	// When launched from a macOS .app bundle (double-click, Dock, Spotlight),
@@ -70,9 +70,9 @@ func rootCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "codespace-zed [target]",
+		Use:   "cosmonaut [target]",
 		Short: "Start or create GitHub Codespaces and open them in Zed",
-		Long: `codespace-zed connects GitHub Codespaces to Zed via SSH remoting.
+		Long: `cosmonaut connects GitHub Codespaces to Zed via SSH remoting.
 
 When a target name is given, its definition is read from the config file.
 Without a target, an interactive TUI lets you pick a repository (with

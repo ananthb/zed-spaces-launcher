@@ -3,7 +3,7 @@
 The applet runs as a background process providing quick access to your codespaces from the system tray.
 
 ```bash
-codespace-zed applet
+cosmonaut applet
 ```
 
 ## Features
@@ -44,8 +44,8 @@ The home-manager module automatically creates a launchd agent when `daemon.enabl
 The home-manager module creates a systemd user service, or use the included service file manually:
 
 ```bash
-cp codespace-zed.service ~/.config/systemd/user/
-systemctl --user enable --now codespace-zed
+cp cosmonaut.service ~/.config/systemd/user/
+systemctl --user enable --now cosmonaut
 ```
 
 ## Config

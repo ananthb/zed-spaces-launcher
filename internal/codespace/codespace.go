@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ananth/codespace-zed/internal/config"
+	"github.com/ananth/cosmonaut/internal/config"
 )
 
 // RepoField handles the gh CLI returning repository as either a string or an object.

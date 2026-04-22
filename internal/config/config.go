@@ -1,4 +1,4 @@
-// Package config loads the codespace-zed JSONC configuration file
+// Package config loads the cosmonaut JSONC configuration file
 // and defines the Target struct that describes a named codespace target
 // (repository, branch, machine type, Zed display settings, etc.).
 package config

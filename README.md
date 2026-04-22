@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/logo.svg" width="128" height="128" alt="codespace-zed logo">
+  <img src="docs/logo.svg" width="128" height="128" alt="cosmonaut logo">
 </p>
 
-# Codespace Zed Launcher
+# Cosmonaut Launcher
 
 CLI and menu bar applet for GitHub Codespaces + [Zed](https://zed.dev).
 
@@ -21,15 +21,15 @@ Download the `.dmg` from [Releases](https://github.com/linuskendall/zed-spaces-l
 Download the `.AppImage` from [Releases](https://github.com/linuskendall/zed-spaces-launcher/releases):
 
 ```bash
-chmod +x codespace-zed-*.AppImage
-./codespace-zed-*.AppImage
+chmod +x cosmonaut-*.AppImage
+./cosmonaut-*.AppImage
 ```
 
 ### Nix
 
 ```nix
 {
-  inputs.codespace-zed.url = "github:linuskendall/zed-spaces-launcher";
+  inputs.cosmonaut.url = "github:linuskendall/zed-spaces-launcher";
 }
 ```
 
@@ -39,13 +39,13 @@ Or with [Home Manager](https://linuskendall.github.io/zed-spaces-launcher/instal
 
 ```bash
 # Launch interactively — pick a repo, select a codespace, open in Zed
-codespace-zed
+cosmonaut
 
 # Or use a named target from your config
-codespace-zed work
+cosmonaut work
 
 # Start the menu bar applet (tray icon, hotkey, lifecycle management)
-codespace-zed applet
+cosmonaut applet
 ```
 
 ## Requirements

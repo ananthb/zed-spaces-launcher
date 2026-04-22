@@ -1,6 +1,6 @@
 // Package sshconfig manages the local SSH configuration for codespace
 // connections. It writes per-codespace config files into
-// ~/.ssh/codespaces-zed/ and ensures the main ~/.ssh/config includes them.
+// ~/.ssh/cosmonaut/ and ensures the main ~/.ssh/config includes them.
 package sshconfig
 
 import (
@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const SSHIncludeLine = "Include ~/.ssh/codespaces-zed/*.conf"
+const SSHIncludeLine = "Include ~/.ssh/cosmonaut/*.conf"
 
 var hostAliasRe = regexp.MustCompile(`(?m)^\s*Host\s+([^\s*][^\s]*)\s*$`)
 
@@ -52,7 +52,7 @@ func ResolvePaths() SSHPaths {
 	sshDir := filepath.Join(home, ".ssh")
 	return SSHPaths{
 		MainConfigPath: filepath.Join(sshDir, "config"),
-		IncludeDir:     filepath.Join(sshDir, "codespaces-zed"),
+		IncludeDir:     filepath.Join(sshDir, "cosmonaut"),
 	}
 }
 

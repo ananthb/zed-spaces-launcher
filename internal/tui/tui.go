@@ -16,8 +16,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/ananth/codespace-zed/internal/codespace"
-	"github.com/ananth/codespace-zed/internal/config"
+	"github.com/ananth/cosmonaut/internal/codespace"
+	"github.com/ananth/cosmonaut/internal/config"
 )
 
 const numberTimeout = 500 * time.Millisecond

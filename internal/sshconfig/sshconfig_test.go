@@ -46,7 +46,7 @@ func TestEnsureIncludeLineMovesExistingToTop(t *testing.T) {
 
 func TestWriteCodespaceConfig(t *testing.T) {
 	dir := t.TempDir()
-	includeDir := filepath.Join(dir, "codespaces-zed")
+	includeDir := filepath.Join(dir, "cosmonaut")
 	err := WriteCodespaceConfig(includeDir, "cs-demo", "Host cs-demo\n  HostName github.com\n")
 	if err != nil {
 		t.Fatal(err)

@@ -1,4 +1,4 @@
-// Package daemon implements the codespace-zed menu bar applet which
+// Package daemon implements the cosmonaut menu bar applet which
 // hosts a system tray icon, global hotkey listener, and codespace
 // lifecycle management.
 package daemon
@@ -12,8 +12,8 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/driver/desktop"
 
-	"github.com/ananth/codespace-zed/internal/codespace"
-	"github.com/ananth/codespace-zed/internal/config"
+	"github.com/ananth/cosmonaut/internal/codespace"
+	"github.com/ananth/cosmonaut/internal/config"
 )
 
 // Daemon is the long-running background process that hosts the system tray,
@@ -45,7 +45,7 @@ func New(cfg *config.Config, configPath string) *Daemon {
 func (d *Daemon) Run() error {
 	enrichPath()
 
-	d.app = app.NewWithID("dev.codespace-zed.applet")
+	d.app = app.NewWithID("dev.cosmonaut.applet")
 	d.app.SetIcon(appIcon())
 
 	log.Printf("applet started (pid %d)", os.Getpid())
@@ -60,7 +60,7 @@ func (d *Daemon) Run() error {
 	d.startPreWarm()
 
 	// Create a hidden master window so popover windows don't quit the app on close.
-	master := d.app.NewWindow("codespace-zed-applet")
+	master := d.app.NewWindow("cosmonaut-applet")
 	master.SetMaster()
 	master.SetCloseIntercept(func() {})
 

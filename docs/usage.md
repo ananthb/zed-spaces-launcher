@@ -1,10 +1,10 @@
 # Usage
 
 ```
-codespace-zed [target] [flags]
+cosmonaut [target] [flags]
 ```
 
-Run `codespace-zed --help` for flag and config field documentation.
+Run `cosmonaut --help` for flag and config field documentation.
 
 ## Interactive mode (no target)
 
@@ -22,7 +22,7 @@ When there is only one codespace for a repository, it is automatically selected 
 ## Named target
 
 ```bash
-codespace-zed work
+cosmonaut work
 ```
 
 Uses the target definition from the config file directly.
@@ -30,7 +30,7 @@ Uses the target definition from the config file directly.
 ## Direct repository
 
 ```bash
-codespace-zed owner/repo
+cosmonaut owner/repo
 ```
 
 When the argument contains a `/`, it is treated as a repository name rather than a config target. This builds a default target for that repo (workspace path `/workspaces/<repo>`) and skips the repo picker.
@@ -39,7 +39,7 @@ When the argument contains a `/`, it is treated as a repository name rather than
 
 | Flag | Description |
 |---|---|
-| `--config <path>` | Config file path (default `codespace-zed.config.json`) |
+| `--config <path>` | Config file path (default `cosmonaut.config.json`) |
 | `--no-open` | Update SSH/Zed config and print the `ssh://` target without launching Zed |
 | `--dry-run` | Do not create a codespace or launch Zed |
 
@@ -47,8 +47,8 @@ When the argument contains a `/`, it is treated as a repository name rather than
 
 | Path | Description |
 |---|---|
-| `~/.ssh/config` | Ensures `Include ~/.ssh/codespaces-zed/*.conf` exists |
-| `~/.ssh/codespaces-zed/<codespace>.conf` | OpenSSH config from `gh codespace ssh --config` |
+| `~/.ssh/config` | Ensures `Include ~/.ssh/cosmonaut/*.conf` exists |
+| `~/.ssh/cosmonaut/<codespace>.conf` | OpenSSH config from `gh codespace ssh --config` |
 | Zed's `settings.json` | Upserts one `ssh_connections` entry per host alias |
 
 ## Shell completions
@@ -58,17 +58,17 @@ Completions are installed automatically by the nix package. To set them up manua
 === "bash"
 
     ```bash
-    codespace-zed completion bash > /etc/bash_completion.d/codespace-zed
+    cosmonaut completion bash > /etc/bash_completion.d/cosmonaut
     ```
 
 === "zsh"
 
     ```bash
-    codespace-zed completion zsh > "${fpath[1]}/_codespace-zed"
+    cosmonaut completion zsh > "${fpath[1]}/_cosmonaut"
     ```
 
 === "fish"
 
     ```bash
-    codespace-zed completion fish > ~/.config/fish/completions/codespace-zed.fish
+    cosmonaut completion fish > ~/.config/fish/completions/cosmonaut.fish
     ```

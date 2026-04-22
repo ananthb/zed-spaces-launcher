@@ -8,9 +8,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 
-	"github.com/ananth/codespace-zed/internal/codespace"
-	"github.com/ananth/codespace-zed/internal/config"
-	"github.com/ananth/codespace-zed/internal/history"
+	"github.com/ananth/cosmonaut/internal/codespace"
+	"github.com/ananth/cosmonaut/internal/history"
 )
 
 const maxSubmenuCodespaces = 5
@@ -31,7 +30,7 @@ func (d *Daemon) buildTrayMenu() *fyne.Menu {
 		if t, ok := d.Cfg.Targets[d.Cfg.DefaultTarget]; ok {
 			name := d.Cfg.DefaultTarget
 			item := fyne.NewMenuItem("Open "+name, func() {
-				go d.showPopover(name)
+				go d.showGUI(name)
 			})
 			if sub := d.codespaceSubmenu(t.Repository, name); sub != nil {
 				item.ChildMenu = sub
@@ -60,7 +59,7 @@ func (d *Daemon) buildTrayMenu() *fyne.Menu {
 				args = entry.Repository
 			}
 			item := fyne.NewMenuItem(label, func() {
-				go d.showPopover(args)
+				go d.showGUI(args)
 			})
 			if sub := d.codespaceSubmenu(entry.Repository, args); sub != nil {
 				item.ChildMenu = sub
@@ -77,7 +76,7 @@ func (d *Daemon) buildTrayMenu() *fyne.Menu {
 		}))
 	}
 	items = append(items, fyne.NewMenuItem("Open picker...", func() {
-		go d.showPopover()
+		go d.showGUI()
 	}))
 
 	// Preferences.
@@ -90,7 +89,7 @@ func (d *Daemon) buildTrayMenu() *fyne.Menu {
 		d.Stop()
 	}))
 
-	return fyne.NewMenu("codespace-zed", items...)
+	return fyne.NewMenu("cosmonaut", items...)
 }
 
 // codespaceSubmenu builds a submenu showing codespaces for a repo.
@@ -116,14 +115,14 @@ func (d *Daemon) codespaceSubmenu(repo, launchArgs string) *fyne.Menu {
 	for _, cs := range repoCS[:limit] {
 		label := fmt.Sprintf("%s %s", stateIcon(cs.State), csLabel(cs))
 		items = append(items, fyne.NewMenuItem(label, func() {
-			go d.showPopover("--codespace", cs.Name, launchArgs)
+			go d.showGUI("--codespace", cs.Name, launchArgs)
 		}))
 	}
 
 	if len(repoCS) > maxSubmenuCodespaces {
 		items = append(items, fyne.NewMenuItemSeparator())
 		items = append(items, fyne.NewMenuItem("Show all...", func() {
-			go d.showPopover(launchArgs)
+			go d.showGUI(launchArgs)
 		}))
 	}
 
@@ -187,179 +186,11 @@ func (d *Daemon) targetNameForRepo(repo string) string {
 	return ""
 }
 
-// preferencesMenuItem builds the Preferences submenu item.
-// Placeholder — filled in by the preferences implementation.
+// preferencesMenuItem opens the preferences window.
 func (d *Daemon) preferencesMenuItem() *fyne.MenuItem {
-	item := fyne.NewMenuItem("Preferences", nil)
-	item.ChildMenu = d.buildPreferencesMenu()
-	return item
-}
-
-// buildPreferencesMenu is a stub that will be replaced in the preferences step.
-func (d *Daemon) buildPreferencesMenu() *fyne.Menu {
-	var items []*fyne.MenuItem
-
-	// GitHub auth.
-	items = append(items, d.authMenuItems()...)
-
-	items = append(items, fyne.NewMenuItemSeparator())
-
-	// Daemon settings.
-	if d.Cfg != nil && d.Cfg.Daemon != nil {
-		items = append(items, d.daemonSettingsItems()...)
-		items = append(items, fyne.NewMenuItemSeparator())
-	}
-
-	// Default target settings.
-	if d.Cfg != nil && d.Cfg.DefaultTarget != "" {
-		if _, ok := d.Cfg.Targets[d.Cfg.DefaultTarget]; ok {
-			items = append(items, d.targetSettingsItems()...)
-			items = append(items, fyne.NewMenuItemSeparator())
-		}
-	}
-
-	// Edit config file.
-	configPath := d.ConfigPath
-	items = append(items, fyne.NewMenuItem("Edit config file...", func() {
-		go openFile(configPath)
-	}))
-
-	return fyne.NewMenu("", items...)
-}
-
-// authMenuItems returns menu items for GitHub auth status and login/logout.
-func (d *Daemon) authMenuItems() []*fyne.MenuItem {
-	authed := d.checkAuthStatus()
-
-	if authed {
-		status := fyne.NewMenuItem("GitHub: authenticated", nil)
-		status.Disabled = true
-		logout := fyne.NewMenuItem("Remove GitHub auth", func() {
-			go func() {
-				_, _ = d.Runner.Run([]string{"auth", "logout", "--hostname", "github.com", "--yes"})
-				d.rebuildTrayMenu()
-			}()
-		})
-		return []*fyne.MenuItem{status, logout}
-	}
-
-	status := fyne.NewMenuItem("GitHub: not authenticated", nil)
-	status.Disabled = true
-	login := fyne.NewMenuItem("Log in to GitHub...", func() {
-		go d.showGHAuthLogin()
+	return fyne.NewMenuItem("Preferences...", func() {
+		go d.showPreferences()
 	})
-	return []*fyne.MenuItem{status, login}
-}
-
-// checkAuthStatus returns true if gh is authenticated.
-func (d *Daemon) checkAuthStatus() bool {
-	err := codespace.EnsureGHAuth(d.Runner)
-	return err == nil
-}
-
-var hotkeyActions = []string{"picker", "previous", "default"}
-var pollIntervals = []string{"1m", "5m", "15m", "30m"}
-
-// daemonSettingsItems returns menu items for daemon configuration toggles.
-func (d *Daemon) daemonSettingsItems() []*fyne.MenuItem {
-	daemon := d.Cfg.Daemon
-
-	// Hotkey action cycle.
-	current := daemon.HotkeyAction
-	if current == "" {
-		current = "picker"
-	}
-	hotkeyItem := fyne.NewMenuItem(fmt.Sprintf("Hotkey action: %s", current), func() {
-		go func() {
-			d.Cfg.Daemon.HotkeyAction = cycleValue(hotkeyActions, d.Cfg.Daemon.HotkeyAction, "picker")
-			d.saveAndRebuild()
-		}()
-	})
-
-	// Poll interval cycle.
-	poll := daemon.PollInterval
-	if poll == "" {
-		poll = "5m"
-	}
-	pollItem := fyne.NewMenuItem(fmt.Sprintf("Poll interval: %s", poll), func() {
-		go func() {
-			d.Cfg.Daemon.PollInterval = cycleValue(pollIntervals, d.Cfg.Daemon.PollInterval, "5m")
-			d.saveAndRebuild()
-		}()
-	})
-
-	return []*fyne.MenuItem{hotkeyItem, pollItem}
-}
-
-var autoStopValues = []string{"off", "15m", "30m", "1h"}
-var preWarmValues = []string{"off", "08:00", "09:00", "10:00"}
-
-// targetSettingsItems returns menu items for default target settings.
-func (d *Daemon) targetSettingsItems() []*fyne.MenuItem {
-	targetName := d.Cfg.DefaultTarget
-	t := d.Cfg.Targets[targetName]
-
-	// Auto-stop cycle.
-	autoStop := t.AutoStop
-	if autoStop == "" {
-		autoStop = "off"
-	}
-	autoStopItem := fyne.NewMenuItem(fmt.Sprintf("Auto-stop: %s", autoStop), func() {
-		go func() {
-			t := d.Cfg.Targets[targetName]
-			next := cycleValue(autoStopValues, t.AutoStop, "off")
-			if next == "off" {
-				next = ""
-			}
-			t.AutoStop = next
-			d.Cfg.Targets[targetName] = t
-			d.saveAndRebuild()
-		}()
-	})
-
-	// Pre-warm cycle.
-	preWarm := t.PreWarm
-	if preWarm == "" {
-		preWarm = "off"
-	}
-	preWarmItem := fyne.NewMenuItem(fmt.Sprintf("Pre-warm: %s", preWarm), func() {
-		go func() {
-			t := d.Cfg.Targets[targetName]
-			next := cycleValue(preWarmValues, t.PreWarm, "off")
-			if next == "off" {
-				next = ""
-			}
-			t.PreWarm = next
-			d.Cfg.Targets[targetName] = t
-			d.saveAndRebuild()
-		}()
-	})
-
-	heading := fyne.NewMenuItem(fmt.Sprintf("Target: %s", targetName), nil)
-	heading.Disabled = true
-
-	return []*fyne.MenuItem{heading, autoStopItem, preWarmItem}
-}
-
-// cycleValue advances to the next value in a list, wrapping around.
-func cycleValue(values []string, current, defaultVal string) string {
-	if current == "" {
-		current = defaultVal
-	}
-	for i, v := range values {
-		if v == current {
-			return values[(i+1)%len(values)]
-		}
-	}
-	return values[0]
-}
-
-// saveAndRebuild persists config and rebuilds the tray menu.
-func (d *Daemon) saveAndRebuild() {
-	if err := config.SaveConfig(d.ConfigPath, d.Cfg); err != nil {
-		fmt.Printf("error saving config: %v\n", err)
-	}
-	d.rebuildTrayMenu()
 }
 
 // rebuildTrayMenu rebuilds and replaces the system tray menu.

@@ -1,4 +1,4 @@
-site_name: codespace-zed
+site_name: cosmonaut
 site_description: CLI and menu bar applet for GitHub Codespaces + Zed
 site_url: https://linuskendall.github.io/zed-spaces-launcher/
 repo_url: https://github.com/linuskendall/zed-spaces-launcher

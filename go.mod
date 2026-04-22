@@ -1,4 +1,4 @@
-module github.com/ananth/codespace-zed
+module github.com/ananth/cosmonaut
 
 go 1.26.1
 
@@ -8,8 +8,6 @@ require (
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/creack/pty v1.1.24
-	github.com/fyne-io/terminal v0.0.0-20260406081141-73c54fbd1dd3
 	github.com/spf13/cobra v1.10.2
 	golang.design/x/hotkey v0.4.1
 	golang.org/x/term v0.42.0
@@ -17,9 +15,8 @@ require (
 
 require (
 	fyne.io/systray v1.12.0 // indirect
-	github.com/ActiveState/termtest/conpty v0.5.0 // indirect
-	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
+	github.com/FyshOS/fancyfs v0.0.0-20251025194026-1f03098ff624 // indirect
 	github.com/anthonynsimon/bild v0.13.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

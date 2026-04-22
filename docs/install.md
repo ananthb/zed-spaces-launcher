@@ -9,7 +9,7 @@
 
 ## macOS
 
-Download the `.dmg` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases), open it, and drag **Codespace Zed.app** to Applications. Then double-click **Install CLI.command** in the DMG to symlink the `codespace-zed` CLI into `/usr/local/bin`.
+Download the `.dmg` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases), open it, and drag **Cosmonaut.app** to Applications. Then double-click **Install CLI.command** in the DMG to symlink the `cosmonaut` CLI into `/usr/local/bin`.
 
 Available for: `aarch64` (Apple Silicon).
 
@@ -20,8 +20,8 @@ Available for: `aarch64` (Apple Silicon).
 Download the `.AppImage` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases):
 
 ```bash
-chmod +x codespace-zed-*.AppImage
-./codespace-zed-*.AppImage
+chmod +x cosmonaut-*.AppImage
+./cosmonaut-*.AppImage
 ```
 
 Available for: `amd64`, `arm64`.
@@ -31,11 +31,11 @@ Available for: `amd64`, `arm64`.
 Download the `.tar.gz` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases). Each tarball includes the binary, an example config, and a systemd user service file.
 
 ```bash
-tar xzf codespace-zed-amd64.tar.gz
-sudo cp codespace-zed/codespace-zed /usr/local/bin/
+tar xzf cosmonaut-amd64.tar.gz
+sudo cp cosmonaut/cosmonaut /usr/local/bin/
 # Optional: install systemd user service
-cp codespace-zed/codespace-zed.service ~/.config/systemd/user/
-systemctl --user enable --now codespace-zed
+cp cosmonaut/cosmonaut.service ~/.config/systemd/user/
+systemctl --user enable --now cosmonaut
 ```
 
 Available for: `amd64`, `arm64`.
@@ -45,7 +45,7 @@ Available for: `amd64`, `arm64`.
 ```nix
 # flake.nix
 {
-  inputs.codespace-zed.url = "github:linuskendall/zed-spaces-launcher";
+  inputs.cosmonaut.url = "github:linuskendall/zed-spaces-launcher";
 }
 ```
 
@@ -55,9 +55,9 @@ The package includes shell completions for bash, zsh, and fish.
 
 ```nix
 {
-  imports = [ codespace-zed.homeManagerModules.default ];
+  imports = [ cosmonaut.homeManagerModules.default ];
 
-  programs.codespace-zed = {
+  programs.cosmonaut = {
     enable = true;
     defaultTarget = "work";
     targets.work = {
@@ -74,7 +74,7 @@ This generates the config file, wraps the binary with `--config`, sets up SSH in
 ## From source
 
 ```bash
-go install github.com/ananth/codespace-zed@latest
+go install github.com/ananth/cosmonaut@latest
 ```
 
 Requires Go 1.26+ and CGo (for the Fyne GUI toolkit used by the applet).
@@ -87,11 +87,11 @@ All release artifacts are signed with [Sigstore cosign](https://docs.sigstore.de
 
 ```bash
 cosign verify-blob \
-  --certificate codespace-zed-amd64.tar.gz.pem \
-  --signature codespace-zed-amd64.tar.gz.sig \
+  --certificate cosmonaut-amd64.tar.gz.pem \
+  --signature cosmonaut-amd64.tar.gz.sig \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --certificate-identity-regexp 'github.com/linuskendall/zed-spaces-launcher' \
-  codespace-zed-amd64.tar.gz
+  cosmonaut-amd64.tar.gz
 ```
 
 ### Verify checksums

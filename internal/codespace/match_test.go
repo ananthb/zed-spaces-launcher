@@ -3,7 +3,7 @@ package codespace
 import (
 	"testing"
 
-	"github.com/ananth/codespace-zed/internal/config"
+	"github.com/ananth/cosmonaut/internal/config"
 )
 
 func TestMatchesTargetComparesRepoBranchAndDisplayName(t *testing.T) {

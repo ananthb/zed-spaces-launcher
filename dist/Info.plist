@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleExecutable</key>
-  <string>codespace-zed</string>
+  <string>cosmonaut</string>
   <key>CFBundleIdentifier</key>
-  <string>dev.codespace-zed.applet</string>
+  <string>dev.cosmonaut.applet</string>
   <key>CFBundleName</key>
-  <string>Codespace Zed</string>
+  <string>Cosmonaut</string>
   <key>CFBundleDisplayName</key>
-  <string>Codespace Zed</string>
+  <string>Cosmonaut</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleVersion</key>

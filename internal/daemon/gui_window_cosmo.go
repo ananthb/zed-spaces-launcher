@@ -24,6 +24,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"image/color"
@@ -177,9 +178,14 @@ func (uw *unifiedWindow) buildAccountFooter() fyne.CanvasObject {
 	sub.TextSize = 10
 	sub.TextStyle = fyne.TextStyle{Monospace: true}
 
+	settingsBtn := widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
+		go uw.daemon.showPreferences()
+	})
+	settingsBtn.Importance = widget.LowImportance
+
 	info := container.NewVBox(handle, sub)
 	return container.NewPadded(
-		container.NewHBox(dot, info),
+		container.NewBorder(nil, nil, container.NewHBox(dot, info), settingsBtn),
 	)
 }
 
@@ -234,11 +240,19 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 
 	statusRow := container.NewHBox(stateDot(cs.State), stateLbl)
 
-	openBtn := primaryButton("Open in Zed", func() {
+	// Editor selector — default editor + alternatives.
+	defaultEditor := uw.daemon.getEditor()
+	editorSel := widget.NewSelect([]string{"zed", "neovim"}, nil)
+	editorSel.Selected = defaultEditor.Name()
+
+	openBtn := primaryButton(fmt.Sprintf("Open in %s", defaultEditor.Name()), func() {
 		uw.daemon.runLaunchFlow(uw.win, target, resolvedName, cs)
 	})
-	sshBtn := widget.NewButton("SSH…", func() {})
-	deleteBtn := destructiveButton("Delete", func() {
+	editorSel.OnChanged = func(val string) {
+		openBtn.SetText(fmt.Sprintf("Open in %s", val))
+	}
+
+	deleteBtn := widget.NewButton("Delete", func() {
 		go func() {
 			_ = codespace.DeleteCodespace(uw.daemon.Runner, cs.Name)
 			fyne.Do(func() {
@@ -250,8 +264,8 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 
 	heroLeft := container.NewVBox(statusRow, heroTitle, heroName)
 	heroRight := container.NewVBox(
-		openBtn,
-		container.NewHBox(sshBtn, deleteBtn),
+		container.NewHBox(openBtn, editorSel),
+		deleteBtn,
 	)
 	hero := surfaceCard(container.NewBorder(nil, nil, nil, heroRight, heroLeft))
 
@@ -270,7 +284,7 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 		metaCell("LAST USED", "2 min ago", false),
 	)
 
-	// SSH + Git status split
+	// SSH connection info
 	sshInfo := widget.NewLabel(fmt.Sprintf(
 		"host  cs.%s.github.dev\nuser  codespace\nport  2222\npath  %s",
 		cs.Name, target.WorkspacePath,
@@ -279,19 +293,17 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 	sshCard := surfaceCard(container.NewVBox(
 		caption("SSH CONNECTION"),
 		sshInfo,
-		container.NewHBox(
-			widget.NewButton("Copy config", func() {}),
-			widget.NewButton("Open in Terminal", func() {}),
-		),
 	))
 
-	gitStatus := widget.NewLabel(fmt.Sprintf("%s · ahead 2, behind 0", branchStr))
+	// Git status
+	gitStatus := widget.NewLabel(fmt.Sprintf("%s", branchStr))
+	gitStatus.TextStyle = fyne.TextStyle{Monospace: true}
 	gitCard := surfaceCard(container.NewVBox(
 		caption("GIT STATUS"),
 		gitStatus,
 	))
 
-	panels := container.NewGridWithColumns(2, sshCard, gitCard)
+	panels := container.NewVBox(sshCard, gitCard)
 
 	body := container.NewVBox(hero, meta, panels)
 	uw.setContent(container.NewBorder(header, nil, nil, nil,

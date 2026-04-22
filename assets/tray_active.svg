@@ -1,8 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
-  
-  <path d="M 22 8 Q 32 8, 34 18 L 34 26 Q 34 33, 28 35 L 16 35 Q 10 33, 10 26 L 10 18 Q 12 8, 22 8 Z" fill="#000000"></path>
-  <path d="M 14 17 Q 14 15, 16 14.5 L 28 14.5 Q 30 15, 30 17 L 30 25 Q 30 27, 28 27.5 L 16 27.5 Q 14 27, 14 25 Z" fill="#ffffff"></path>
-  <rect x="19" y="18" width="6" height="6.5" rx="0.8" fill="#000000"></rect>
-  <rect x="15" y="35" width="14" height="3" rx="0.8" fill="#000000"></rect>
-  <circle cx="37" cy="9" r="4" fill="#000000"></circle>
+  <!-- Cosmonaut active: helmet with visor slit + filled status dot -->
+  <path d="M 22 7 Q 35 7, 36 19 L 36 28 Q 36 36, 28 37 L 16 37 Q 8 36, 8 28 L 8 19 Q 9 7, 22 7 Z"
+        fill="none" stroke="#000000" stroke-width="2.8" stroke-linejoin="round"/>
+  <rect x="12" y="19" width="20" height="6" rx="2.5" fill="#000000"/>
+  <rect x="14" y="37" width="16" height="3" rx="1" fill="#000000"/>
+  <!-- Active dot -->
+  <circle cx="38" cy="8" r="4" fill="#000000"/>
 </svg>

@@ -264,20 +264,43 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 			branchStr = cs.GitStatus.Branch
 		}
 	}
-	branchLbl := canvas.NewText(branchStr, cTextDim)
-	branchLbl.TextSize = 11
-	branchLbl.TextStyle = fyne.TextStyle{Monospace: true}
 
-	heroInfo := container.NewVBox(statusRow, heroTitle, heroName, branchLbl)
-	actions := container.NewVBox(
-		container.NewHBox(openBtn, editorSel),
-		deleteBtn,
+	heroInfo := container.NewVBox(statusRow, heroTitle, heroName)
+	actions := container.NewHBox(openBtn, editorSel, layout.NewSpacer(), deleteBtn)
+
+	// Meta details as a compact form — wraps and shrinks naturally.
+	branchVal := widget.NewLabel(branchStr)
+	branchVal.TextStyle = fyne.TextStyle{Monospace: true}
+	branchVal.Truncation = fyne.TextTruncateEllipsis
+
+	nameVal := widget.NewLabel(cs.Name)
+	nameVal.TextStyle = fyne.TextStyle{Monospace: true}
+	nameVal.Truncation = fyne.TextTruncateEllipsis
+
+	repoVal := widget.NewLabel(repo)
+	repoVal.Truncation = fyne.TextTruncateEllipsis
+
+	sshHost := widget.NewLabel(fmt.Sprintf("cs.%s.github.dev", cs.Name))
+	sshHost.TextStyle = fyne.TextStyle{Monospace: true}
+	sshHost.Truncation = fyne.TextTruncateEllipsis
+
+	pathVal := widget.NewLabel(target.WorkspacePath)
+	pathVal.TextStyle = fyne.TextStyle{Monospace: true}
+	pathVal.Truncation = fyne.TextTruncateEllipsis
+
+	meta := widget.NewForm(
+		widget.NewFormItem("Branch", branchVal),
+		widget.NewFormItem("Repository", repoVal),
+		widget.NewFormItem("Codespace", nameVal),
+		widget.NewFormItem("SSH Host", sshHost),
+		widget.NewFormItem("Path", pathVal),
 	)
 
 	body := container.NewVBox(
 		heroInfo,
-		widget.NewSeparator(),
 		actions,
+		widget.NewSeparator(),
+		meta,
 	)
 	uw.setContent(container.NewPadded(body))
 }

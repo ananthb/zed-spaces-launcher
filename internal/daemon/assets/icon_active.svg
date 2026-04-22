@@ -1,15 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
-  <!-- Cosmonaut active: CA monogram — C wraps around A-rocket, dots filled -->
-  <!-- A as rocket -->
-  <path d="M22 6 L28 32 L24 32 L22 24 L20 32 L16 32 Z" fill="none" stroke="#000000" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- A crossbar -->
-  <line x1="18.5" y1="26" x2="25.5" y2="26" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
-  <!-- Rocket fins -->
-  <path d="M16 32 L13 36 L17 33" fill="none" stroke="#000000" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M28 32 L31 36 L27 33" fill="none" stroke="#000000" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- C wrapping around the A -->
-  <path d="M14 12 Q6 12,6 22 Q6 32,14 34" fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
-  <!-- Connection dots (filled for active) -->
-  <circle cx="38" cy="14" r="2.5" fill="#000000"/>
-  <circle cx="38" cy="22" r="2.5" fill="#000000"/>
+  
+  <path d="M 22 8 Q 32 8, 34 18 L 34 26 Q 34 33, 28 35 L 16 35 Q 10 33, 10 26 L 10 18 Q 12 8, 22 8 Z" fill="#000000"></path>
+  <path d="M 14 17 Q 14 15, 16 14.5 L 28 14.5 Q 30 15, 30 17 L 30 25 Q 30 27, 28 27.5 L 16 27.5 Q 14 27, 14 25 Z" fill="#ffffff"></path>
+  <rect x="19" y="18" width="6" height="6.5" rx="0.8" fill="#000000"></rect>
+  <rect x="15" y="35" width="14" height="3" rx="0.8" fill="#000000"></rect>
+  <circle cx="37" cy="9" r="4" fill="#000000"></circle>
 </svg>

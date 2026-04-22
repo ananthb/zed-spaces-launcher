@@ -38,7 +38,7 @@ func (d *Daemon) showGUI(args ...string) {
 	}
 
 	fyne.Do(func() {
-		uw := d.newUnifiedWindow()
+		uw := d.newCosmoWindow()
 
 		if codespaceName != "" && targetArg != "" {
 			// Direct codespace launch — show progress immediately.

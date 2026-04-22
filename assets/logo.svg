@@ -1,55 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1a1a2e"/>
-      <stop offset="100%" stop-color="#0f0f1a"/>
+      <stop offset="0%" stop-color="#1d1f24"></stop>
+      <stop offset="55%" stop-color="#0f1114"></stop>
+      <stop offset="100%" stop-color="#07080a"></stop>
     </linearGradient>
-    <linearGradient id="rocket" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#e8e8f0"/>
-      <stop offset="100%" stop-color="#b0b0c0"/>
+    <radialGradient id="gloss" cx="0.3" cy="0.15" r="0.9">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12"></stop>
+      <stop offset="60%" stop-color="#ffffff" stop-opacity="0"></stop>
+    </radialGradient>
+    <linearGradient id="helmet" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#f4f4f5"></stop>
+      <stop offset="55%" stop-color="#d4d4d8"></stop>
+      <stop offset="100%" stop-color="#a1a1aa"></stop>
     </linearGradient>
-    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ff6b35"/>
-      <stop offset="50%" stop-color="#ff4500"/>
-      <stop offset="100%" stop-color="#ffcc02"/>
+    <linearGradient id="visor" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#0b0c0f"></stop>
+      <stop offset="100%" stop-color="#1a1d23"></stop>
     </linearGradient>
+    <linearGradient id="visor-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.14"></stop>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0"></stop>
+    </linearGradient>
+    <radialGradient id="accent" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#a3e635" stop-opacity="0.35"></stop>
+      <stop offset="100%" stop-color="#a3e635" stop-opacity="0"></stop>
+    </radialGradient>
+    <clipPath id="visorClip">
+      <path d="M 296 412 Q 296 356, 360 340 L 664 340 Q 728 356, 728 412 L 728 608 Q 728 664, 664 680 L 360 680 Q 296 664, 296 608 Z"></path>
+    </clipPath>
   </defs>
-
-  <!-- Background: rounded square -->
-  <rect x="4" y="4" width="120" height="120" rx="24" fill="url(#bg)"/>
-
-  <!-- Stars -->
-  <circle cx="20" cy="25" r="1.2" fill="#ffffff" opacity="0.6"/>
-  <circle cx="105" cy="20" r="1" fill="#ffffff" opacity="0.5"/>
-  <circle cx="95" cy="45" r="0.8" fill="#ffffff" opacity="0.4"/>
-  <circle cx="25" cy="95" r="1" fill="#ffffff" opacity="0.5"/>
-  <circle cx="110" cy="85" r="1.2" fill="#ffffff" opacity="0.4"/>
-  <circle cx="15" cy="60" r="0.8" fill="#ffffff" opacity="0.3"/>
-
-  <!-- C letter — wraps around the A-rocket -->
-  <path d="M42 35 Q18 35,18 64 Q18 93,42 95"
-        fill="none" stroke="#7B68EE" stroke-width="8" stroke-linecap="round"/>
-
-  <!-- A as rocket body -->
-  <path d="M64 16 L78 88 L72 88 L64 62 L56 88 L50 88 Z"
-        fill="url(#rocket)" stroke="#9090a8" stroke-width="1"/>
-
-  <!-- A crossbar / window -->
-  <ellipse cx="64" cy="52" rx="5" ry="4" fill="#4488cc" stroke="#5599dd" stroke-width="0.8"/>
-
-  <!-- Rocket fins -->
-  <path d="M50 88 L40 102 L54 90" fill="#7B68EE" opacity="0.8"/>
-  <path d="M78 88 L88 102 L74 90" fill="#7B68EE" opacity="0.8"/>
-
-  <!-- Exhaust flame -->
-  <path d="M58 88 Q64 108,70 88 Q67 100,64 110 Q61 100,58 88"
-        fill="url(#flame)" opacity="0.9"/>
-
-  <!-- Connection dots (representing active codespaces) -->
-  <circle cx="100" cy="40" r="4" fill="#50fa7b" opacity="0.8"/>
-  <circle cx="100" cy="56" r="3" fill="#50fa7b" opacity="0.5"/>
-
-  <!-- Subtle connecting lines from dots to rocket -->
-  <line x1="96" y1="40" x2="78" y2="45" stroke="#50fa7b" stroke-width="0.8" opacity="0.3"/>
-  <line x1="97" y1="56" x2="78" y2="55" stroke="#50fa7b" stroke-width="0.8" opacity="0.3"/>
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"></rect>
+  <rect width="1024" height="1024" rx="228" fill="url(#gloss)"></rect>
+  <g fill="#ffffff">
+    <circle cx="140" cy="180" r="2.5" opacity="0.55"></circle>
+    <circle cx="880" cy="150" r="3" opacity="0.7"></circle>
+    <circle cx="840" cy="340" r="1.8" opacity="0.4"></circle>
+    <circle cx="180" cy="780" r="2" opacity="0.5"></circle>
+    <circle cx="900" cy="820" r="2.5" opacity="0.45"></circle>
+    <circle cx="120" cy="520" r="1.5" opacity="0.35"></circle>
+  </g>
+  <rect x="360" y="850" width="304" height="90" rx="18" fill="#3f3f46"></rect>
+  <rect x="360" y="850" width="304" height="14" fill="#52525b"></rect>
+  <rect x="360" y="928" width="304" height="12" fill="#18181b"></rect>
+  <path d="M 512 200 Q 752 200, 800 440 L 800 620 Q 800 800, 664 850 L 360 850 Q 224 800, 224 620 L 224 440 Q 272 200, 512 200 Z" fill="url(#helmet)"></path>
+  <path d="M 512 260 Q 732 260, 764 460 L 764 620 Q 740 740, 640 770 L 384 770 Q 284 740, 260 620 L 260 460 Q 292 260, 512 260 Z" fill="#27272a"></path>
+  <path d="M 296 412 Q 296 356, 360 340 L 664 340 Q 728 356, 728 412 L 728 608 Q 728 664, 664 680 L 360 680 Q 296 664, 296 608 Z" fill="url(#visor)"></path>
+  <g clip-path="url(#visorClip)">
+    <ellipse cx="512" cy="510" rx="220" ry="120" fill="url(#accent)"></ellipse>
+    <path d="M 388 450 L 340 510 L 388 570" stroke="#71717a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+    <path d="M 636 450 L 684 510 L 636 570" stroke="#71717a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+    <rect x="472" y="446" width="80" height="128" rx="6" fill="#a3e635"></rect>
+  </g>
+  <path d="M 296 412 Q 296 356, 360 340 L 664 340 Q 728 356, 728 412 L 728 490 Q 512 450, 296 490 Z" fill="url(#visor-gloss)"></path>
+  <path d="M 296 412 Q 296 356, 360 340 L 664 340 Q 728 356, 728 412 L 728 608 Q 728 664, 664 680 L 360 680 Q 296 664, 296 608 Z" fill="none" stroke="#09090b" stroke-width="6"></path>
+  <circle cx="748" cy="330" r="14" fill="#3f3f46"></circle>
+  <circle cx="748" cy="330" r="6" fill="#a3e635"></circle>
+  <circle cx="276" cy="330" r="14" fill="#3f3f46"></circle>
+  <circle cx="276" cy="330" r="5" fill="#52525b"></circle>
 </svg>

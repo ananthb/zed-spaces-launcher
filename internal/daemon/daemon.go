@@ -46,6 +46,7 @@ func (d *Daemon) Run() error {
 	enrichPath()
 
 	d.app = app.NewWithID("dev.cosmonaut.applet")
+	d.app.Settings().SetTheme(newCosmoTheme())
 	d.app.SetIcon(appIcon())
 
 	log.Printf("applet started (pid %d)", os.Getpid())

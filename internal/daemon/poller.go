@@ -51,14 +51,16 @@ func (d *Daemon) poll() {
 	d.rebuildTrayMenu()
 }
 
-// updateTrayIcon switches between idle (hollow) and active (filled) icons
-// based on whether any codespaces are running.
+// updateTrayIcon switches tray icon based on aggregate codespace state.
 func (d *Daemon) updateTrayIcon(codespaces []codespace.Codespace) {
-	hasActive := false
+	hasAvailable := false
+	hasStarting := false
 	for _, cs := range codespaces {
-		if cs.State == "Available" || cs.State == "Starting" {
-			hasActive = true
-			break
+		switch cs.State {
+		case "Available":
+			hasAvailable = true
+		case "Starting":
+			hasStarting = true
 		}
 	}
 
@@ -67,9 +69,12 @@ func (d *Daemon) updateTrayIcon(codespaces []codespace.Codespace) {
 		if !ok {
 			return
 		}
-		if hasActive {
+		switch {
+		case hasStarting:
+			desk.SetSystemTrayIcon(trayIconStarting())
+		case hasAvailable:
 			desk.SetSystemTrayIcon(trayIconActive())
-		} else {
+		default:
 			desk.SetSystemTrayIcon(trayIconIdle())
 		}
 	})

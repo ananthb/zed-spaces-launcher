@@ -97,6 +97,7 @@ let
 
   configJSON = builtins.toJSON (filterNulls {
     defaultTarget = cfg.defaultTarget;
+    editor = cfg.editor;
     targets = lib.mapAttrs (_: target: filterNulls {
       inherit (target)
         repository branch displayName codespaceName workspacePath
@@ -137,6 +138,12 @@ in
       type = lib.types.nullOr lib.types.str;
       default = null;
       description = "Default target name when none is specified on the command line.";
+    };
+
+    editor = lib.mkOption {
+      type = lib.types.nullOr (lib.types.enum [ "zed" "neovim" ]);
+      default = null;
+      description = "Editor to use for opening codespaces (zed or neovim). Defaults to zed.";
     };
 
     targets = lib.mkOption {

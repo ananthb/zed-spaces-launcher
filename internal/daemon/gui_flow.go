@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -12,14 +11,14 @@ import (
 
 	"github.com/ananth/cosmonaut/internal/codespace"
 	"github.com/ananth/cosmonaut/internal/config"
+	"github.com/ananth/cosmonaut/internal/editor"
 	"github.com/ananth/cosmonaut/internal/history"
 	"github.com/ananth/cosmonaut/internal/slug"
 	"github.com/ananth/cosmonaut/internal/sshconfig"
-	"github.com/ananth/cosmonaut/internal/zed"
 )
 
-// showGUI opens the native GUI window. It replaces showPopover.
-// Args are parsed the same way showPopover parsed them:
+// showGUI opens the native GUI window.
+// Args are parsed the same way the old showPopover parsed them:
 //   - no args: open repo picker
 //   - target name or owner/repo: open codespace selector for that target
 //   - "--codespace", csName, target: direct launch
@@ -44,18 +43,15 @@ func (d *Daemon) showGUI(args ...string) {
 		win := d.createGUIWindow("Cosmonaut")
 
 		if codespaceName != "" && targetArg != "" {
-			// Direct codespace launch.
 			target, resolvedName := d.resolveTarget(targetArg)
 			cs := &codespace.Codespace{Name: codespaceName, Repository: codespace.RepoField(target.Repository)}
 			win.Show()
 			d.runLaunchFlow(win, target, resolvedName, cs)
 		} else if targetArg != "" {
-			// Open codespace selector for a specific target/repo.
 			target, resolvedName := d.resolveTarget(targetArg)
 			d.showCodespaceSelector(win, target.Repository, target, resolvedName)
 			win.Show()
 		} else {
-			// Open repo picker.
 			d.showRepoPicker(win)
 			win.Show()
 		}
@@ -79,13 +75,10 @@ func (d *Daemon) resolveTarget(arg string) (config.Target, string) {
 func (d *Daemon) showRepoPicker(win fyne.Window) {
 	screen := d.newRepoPickerScreen(win,
 		func(repo string) {
-			// Repo selected → show codespace selector.
 			target, resolvedName := guiTargetForRepo(d.Cfg, repo)
 			d.showCodespaceSelector(win, repo, target, resolvedName)
 		},
-		func() {
-			win.Close()
-		},
+		func() { win.Close() },
 	)
 	win.SetContent(screen.canvas)
 }
@@ -95,20 +88,13 @@ func (d *Daemon) showCodespaceSelector(win fyne.Window, repo string, target conf
 	screen := d.newCodespaceScreen(win, repo, target, resolvedName,
 		func(cs *codespace.Codespace) {
 			if cs != nil {
-				// Existing codespace selected → launch.
 				d.runLaunchFlow(win, target, resolvedName, cs)
 			} else {
-				// Create new → show work label input.
 				d.showWorkLabelInput(win, target, resolvedName)
 			}
 		},
-		func() {
-			// Back → repo picker.
-			d.showRepoPicker(win)
-		},
-		func() {
-			win.Close()
-		},
+		func() { d.showRepoPicker(win) },
+		func() { win.Close() },
 	)
 	win.SetContent(screen.canvas)
 }
@@ -117,19 +103,13 @@ func (d *Daemon) showCodespaceSelector(win fyne.Window, repo string, target conf
 func (d *Daemon) showWorkLabelInput(win fyne.Window, target config.Target, resolvedName string) {
 	screen := newWorkLabelScreen(
 		func(label string) {
-			// Create codespace with label.
 			createTarget := target
 			createTarget.DisplayName = slug.BuildDisplayName(
-				target.Repository,
-				target.Branch,
-				label,
-				target.DisplayName,
+				target.Repository, target.Branch, label, target.DisplayName,
 			)
 			d.runCreateAndLaunch(win, createTarget, resolvedName)
 		},
-		func() {
-			win.Close()
-		},
+		func() { win.Close() },
 	)
 	win.SetContent(screen.canvas)
 }
@@ -142,21 +122,32 @@ func (d *Daemon) runCreateAndLaunch(win fyne.Window, target config.Target, resol
 	go func() {
 		cs, err := codespace.CreateCodespace(d.Runner, target)
 		if err != nil {
-			fyne.Do(func() {
-				dialog.ShowError(fmt.Errorf("creating codespace: %w", err), win)
-			})
+			fyne.Do(func() { dialog.ShowError(fmt.Errorf("creating codespace: %w", err), win) })
 			return
 		}
 		d.runLaunchFlow(win, target, resolvedName, cs)
 	}()
 }
 
-// runLaunchFlow runs the SSH setup and Zed launch sequence with progress updates.
+// getEditor returns the configured editor implementation.
+func (d *Daemon) getEditor() editor.Editor {
+	editorName := ""
+	if d.Cfg != nil {
+		editorName = d.Cfg.Editor
+	}
+	ed, err := editor.ForName(editorName)
+	if err != nil {
+		log.Printf("editor: %v, falling back to zed", err)
+		ed, _ = editor.ForName("zed")
+	}
+	return ed
+}
+
+// runLaunchFlow runs the SSH setup and editor launch sequence.
 func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedName string, selected *codespace.Codespace) {
+	ed := d.getEditor()
 	progress := newProgressScreen("Preparing codespace...")
-	fyne.Do(func() {
-		win.SetContent(progress.canvas)
-	})
+	fyne.Do(func() { win.SetContent(progress.canvas) })
 
 	go func() {
 		setStatus := func(msg string) {
@@ -172,9 +163,8 @@ func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedNa
 		if selected.State == "Available" {
 			paths := sshconfig.ResolvePaths()
 			if alias, ok := sshconfig.ReadExistingAlias(paths.IncludeDir, selected.Name); ok {
-				remoteURL := fmt.Sprintf("ssh://%s/%s", alias, strings.TrimLeft(target.WorkspacePath, "/"))
-				setStatus("Launching Zed...")
-				if err := launchZed(remoteURL); err != nil {
+				setStatus(fmt.Sprintf("Launching %s...", ed.Name()))
+				if err := ed.LaunchRemote(alias, target.WorkspacePath); err != nil {
 					fyne.Do(func() { dialog.ShowError(err, win) })
 					return
 				}
@@ -219,24 +209,18 @@ func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedNa
 			return
 		}
 
-		// Update Zed settings.
-		nickname := zed.ResolveNickname(
-			target.ZedNickname,
-			target.DisplayName,
-			selected.DisplayName,
-			resolvedName,
+		// Configure editor-specific settings (e.g. Zed's settings.json).
+		nickname := editor.ResolveNickname(
+			target.ZedNickname, target.DisplayName, selected.DisplayName, resolvedName,
 		)
-		conn := zed.BuildConnection(sshAlias, target.WorkspacePath, nickname, target.UploadBinaryOverSSH)
-		settingsPath := zed.ResolveSettingsPath()
-		if err := zed.UpsertConnectionInFile(settingsPath, conn); err != nil {
+		if err := ed.ConfigureConnection(sshAlias, target.WorkspacePath, nickname, target.UploadBinaryOverSSH); err != nil {
 			fyne.Do(func() { dialog.ShowError(err, win) })
 			return
 		}
 
-		// Launch Zed.
-		remoteURL := fmt.Sprintf("ssh://%s/%s", sshAlias, strings.TrimLeft(target.WorkspacePath, "/"))
-		setStatus("Launching Zed...")
-		if err := launchZed(remoteURL); err != nil {
+		// Launch editor.
+		setStatus(fmt.Sprintf("Launching %s...", ed.Name()))
+		if err := ed.LaunchRemote(sshAlias, target.WorkspacePath); err != nil {
 			fyne.Do(func() { dialog.ShowError(err, win) })
 			return
 		}
@@ -244,13 +228,4 @@ func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedNa
 		fyne.Do(func() { win.Close() })
 		d.rebuildTrayMenu()
 	}()
-}
-
-// launchZed finds the Zed binary and opens the remote URL.
-func launchZed(remoteURL string) error {
-	zedBin, err := codespace.FindZedBinary()
-	if err != nil {
-		return err
-	}
-	return exec.Command(zedBin, remoteURL).Run()
 }

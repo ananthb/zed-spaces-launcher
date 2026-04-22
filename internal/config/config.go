@@ -13,6 +13,7 @@ import (
 
 type Config struct {
 	DefaultTarget string            `json:"defaultTarget,omitempty"`
+	Editor        string            `json:"editor,omitempty"` // "zed" (default) or "neovim"
 	Targets       map[string]Target `json:"targets"`
 	Daemon        *DaemonConfig     `json:"daemon,omitempty"`
 }

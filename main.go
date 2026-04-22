@@ -1,20 +1,19 @@
-// cosmonaut starts or creates GitHub Codespaces and opens them in Zed
-// via SSH remoting.
+// cosmonaut starts or creates GitHub Codespaces and opens them in your
+// editor (Zed or Neovim) via SSH remoting.
 //
 // The tool performs the following steps:
 //  1. Authenticate with GitHub via the gh CLI
 //  2. Resolve a target repository and codespace (interactive or from config)
 //  3. Create a codespace if no match exists
 //  4. Fetch the codespace's SSH config and write it to ~/.ssh/cosmonaut/
-//  5. Upsert a remote connection in Zed's settings.json
-//  6. Launch Zed with the ssh:// remote URL
+//  5. Configure editor-specific settings (e.g. Zed's settings.json)
+//  6. Launch the editor with the SSH remote connection
 package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -25,11 +24,11 @@ import (
 
 	"github.com/ananth/cosmonaut/internal/codespace"
 	"github.com/ananth/cosmonaut/internal/config"
+	"github.com/ananth/cosmonaut/internal/editor"
 	"github.com/ananth/cosmonaut/internal/history"
 	"github.com/ananth/cosmonaut/internal/slug"
 	"github.com/ananth/cosmonaut/internal/sshconfig"
 	"github.com/ananth/cosmonaut/internal/tui"
-	"github.com/ananth/cosmonaut/internal/zed"
 )
 
 const defaultConfigPath = "cosmonaut.config.json"
@@ -471,26 +470,30 @@ func run(configPath, targetName, codespaceName string, noOpen, dryRun bool) erro
 	hist.Touch(target.Repository)
 	hist.Save()
 
+	// Resolve the editor to use.
+	editorName := ""
+	if cfg != nil {
+		editorName = cfg.Editor
+	}
+	ed, err := editor.ForName(editorName)
+	if err != nil {
+		return err
+	}
+
 	// Fast path: if the codespace is already Available and we have an
 	// SSH config on disk, skip the slow SSH wait + config fetch and
-	// go straight to launching Zed (which will focus an existing window
-	// if already connected).
+	// go straight to launching the editor.
 	if selected.State == "Available" {
 		paths := sshconfig.ResolvePaths()
 		if alias, ok := sshconfig.ReadExistingAlias(paths.IncludeDir, selected.Name); ok {
-			remoteURL := fmt.Sprintf("ssh://%s/%s", alias, strings.TrimLeft(target.WorkspacePath, "/"))
 			if interactive {
-				tui.Status("⚡", "Codespace already running, opening Zed")
+				tui.Status("⚡", fmt.Sprintf("Codespace already running, opening %s", ed.Name()))
 			}
 			if !dryRun && !noOpen {
-				zedBin, err := codespace.FindZedBinary()
-				if err != nil {
-					return err
-				}
-				cmd := exec.Command(zedBin, remoteURL)
-				return cmd.Run()
+				return ed.LaunchRemote(alias, target.WorkspacePath)
 			}
 			if dryRun || noOpen {
+				remoteURL := fmt.Sprintf("ssh://%s/%s", alias, strings.TrimLeft(target.WorkspacePath, "/"))
 				output := map[string]string{
 					"target":    resolvedTargetName,
 					"codespace": selected.Name,
@@ -547,56 +550,44 @@ func run(configPath, targetName, codespaceName string, noOpen, dryRun bool) erro
 		return err
 	}
 
-	// Update Zed settings.
-	nickname := zed.ResolveNickname(
+	// Configure editor-specific settings (e.g. Zed's settings.json).
+	nickname := editor.ResolveNickname(
 		target.ZedNickname,
 		target.DisplayName,
 		selected.DisplayName,
 		resolvedTargetName,
 	)
-	conn := zed.BuildConnection(sshAlias, target.WorkspacePath, nickname, target.UploadBinaryOverSSH)
-	settingsPath := zed.ResolveSettingsPath()
-	if err := zed.UpsertConnectionInFile(settingsPath, conn); err != nil {
+	if err := ed.ConfigureConnection(sshAlias, target.WorkspacePath, nickname, target.UploadBinaryOverSSH); err != nil {
 		return err
 	}
 
 	if interactive {
-		tui.Status("✓", "SSH and Zed config updated")
+		tui.Status("✓", "SSH and editor config updated")
 	}
 
-	remoteURL := fmt.Sprintf("ssh://%s/%s", sshAlias, strings.TrimLeft(target.WorkspacePath, "/"))
-
 	if dryRun || noOpen {
+		remoteURL := fmt.Sprintf("ssh://%s/%s", sshAlias, strings.TrimLeft(target.WorkspacePath, "/"))
 		output := map[string]string{
-			"target":          resolvedTargetName,
-			"codespace":       selected.Name,
-			"sshAlias":        sshAlias,
-			"remoteUrl":       remoteURL,
-			"zedSettingsPath": settingsPath,
+			"target":    resolvedTargetName,
+			"codespace": selected.Name,
+			"sshAlias":  sshAlias,
+			"remoteUrl": remoteURL,
+			"editor":    ed.Name(),
 		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(output)
 	}
 
-	// Launch Zed.
-	zedBin, err := codespace.FindZedBinary()
-	if err != nil {
-		return err
-	}
+	// Launch editor.
 	if interactive {
-		if err := tui.RunWithSpinner("Launching Zed", func() error {
-			cmd := exec.Command(zedBin, remoteURL)
-			return cmd.Run()
+		if err := tui.RunWithSpinner(fmt.Sprintf("Launching %s", ed.Name()), func() error {
+			return ed.LaunchRemote(sshAlias, target.WorkspacePath)
 		}); err != nil {
 			return err
 		}
 	} else {
-		cmd := exec.Command(zedBin, remoteURL)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
+		if err := ed.LaunchRemote(sshAlias, target.WorkspacePath); err != nil {
 			return err
 		}
 	}

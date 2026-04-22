@@ -114,17 +114,6 @@ func RequireCommand(name string) error {
 	return nil
 }
 
-// FindZedBinary returns the path to the Zed editor CLI binary.
-// It checks "zed" first (Zed.app / Homebrew), then "zeditor" (nix).
-func FindZedBinary() (string, error) {
-	for _, name := range []string{"zed", "zeditor"} {
-		if p, err := exec.LookPath(name); err == nil {
-			return p, nil
-		}
-	}
-	return "", fmt.Errorf("Zed editor not found on PATH (tried \"zed\" and \"zeditor\")")
-}
-
 // EnsureGHAuth verifies the user is authenticated with gh.
 func EnsureGHAuth(runner GHRunner) error {
 	_, err := runner.Run([]string{"auth", "status"})

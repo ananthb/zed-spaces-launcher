@@ -18,6 +18,8 @@ package daemon
 import (
 	"fmt"
 	"log"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -268,8 +270,16 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 		}
 	}
 
+	sshBtn := widget.NewButton("SSH", func() {
+		go func() {
+			// Open SSH session in default terminal.
+			sshAlias := fmt.Sprintf("cs.%s.github.dev", cs.Name)
+			openSSHInTerminal(sshAlias, target.WorkspacePath)
+		}()
+	})
+
 	heroInfo := container.NewVBox(statusRow, heroTitle, heroName)
-	actions := container.NewHBox(openBtn, editorSel, layout.NewSpacer(), deleteBtn)
+	actions := container.NewHBox(openBtn, editorSel, sshBtn, layout.NewSpacer(), deleteBtn)
 
 	// Meta details as a compact form — wraps and shrinks naturally.
 	branchVal := widget.NewLabel(branchStr)
@@ -476,5 +486,25 @@ func fetchBranches(runner codespace.GHRunner, repo string) []string {
 		}
 	}
 	return branches
+}
+
+// openSSHInTerminal opens an SSH session to a codespace in the default terminal.
+func openSSHInTerminal(sshAlias, workspacePath string) {
+	sshCmd := fmt.Sprintf("ssh -t %s 'cd %s && exec $SHELL -l'", sshAlias, workspacePath)
+	if runtime.GOOS == "darwin" {
+		script := fmt.Sprintf(`tell application "Terminal"
+activate
+do script "%s"
+end tell`, sshCmd)
+		exec.Command("osascript", "-e", script).Run()
+	} else {
+		// Linux: try common terminals.
+		for _, term := range []string{"ghostty", "alacritty", "kitty", "gnome-terminal", "xterm"} {
+			if _, err := exec.LookPath(term); err == nil {
+				exec.Command(term, "-e", "sh", "-c", sshCmd).Run()
+				return
+			}
+		}
+	}
 }
 

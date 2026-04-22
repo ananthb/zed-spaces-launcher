@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
@@ -13,15 +12,14 @@ import (
 	"github.com/ananth/cosmonaut/internal/config"
 	"github.com/ananth/cosmonaut/internal/editor"
 	"github.com/ananth/cosmonaut/internal/history"
-	"github.com/ananth/cosmonaut/internal/slug"
 	"github.com/ananth/cosmonaut/internal/sshconfig"
 )
 
-// showGUI opens the native GUI window.
-// Args are parsed the same way the old showPopover parsed them:
-//   - no args: open repo picker
-//   - target name or owner/repo: open codespace selector for that target
-//   - "--codespace", csName, target: direct launch
+// showGUI opens the unified Cosmonaut window.
+// Args determine initial state:
+//   - no args: show the window with sidebar
+//   - target name or owner/repo: open tree, expand that repo
+//   - "--codespace", csName, target: direct launch with progress
 func (d *Daemon) showGUI(args ...string) {
 	if d.app == nil {
 		log.Println("gui: app not initialized")
@@ -40,78 +38,58 @@ func (d *Daemon) showGUI(args ...string) {
 	}
 
 	fyne.Do(func() {
-		win := d.createGUIWindow("Cosmonaut")
+		uw := d.newUnifiedWindow()
 
 		if codespaceName != "" && targetArg != "" {
-			target, resolvedName := d.resolveTarget(targetArg)
+			// Direct codespace launch — show progress immediately.
+			target, resolvedName := d.resolveGUITarget(targetArg)
 			cs := &codespace.Codespace{Name: codespaceName, Repository: codespace.RepoField(target.Repository)}
-			win.Show()
-			d.runLaunchFlow(win, target, resolvedName, cs)
+			uw.win.Show()
+			d.runLaunchFlow(uw.win, target, resolvedName, cs)
 		} else if targetArg != "" {
-			target, resolvedName := d.resolveTarget(targetArg)
-			d.showCodespaceSelector(win, target.Repository, target, resolvedName)
-			win.Show()
+			// Open with a specific repo expanded.
+			target, _ := d.resolveGUITarget(targetArg)
+			uw.tree.OpenBranch(repoNodeID(target.Repository))
+			uw.win.Show()
 		} else {
-			d.showRepoPicker(win)
-			win.Show()
+			uw.win.Show()
 		}
 	})
 }
 
-// resolveTarget resolves a target argument to a config Target.
-func (d *Daemon) resolveTarget(arg string) (config.Target, string) {
-	if strings.Contains(arg, "/") {
-		return guiTargetForRepo(d.Cfg, arg)
-	}
-	if d.Cfg != nil {
-		if t, ok := d.Cfg.Targets[arg]; ok {
-			return t, arg
+// resolveGUITarget resolves a target argument to a config Target.
+func (d *Daemon) resolveGUITarget(arg string) (config.Target, string) {
+	if arg != "" && !isRepoLike(arg) {
+		if d.Cfg != nil {
+			if t, ok := d.Cfg.Targets[arg]; ok {
+				return t, arg
+			}
 		}
 	}
 	return guiTargetForRepo(d.Cfg, arg)
 }
 
-// showRepoPicker displays the repo picker screen.
-func (d *Daemon) showRepoPicker(win fyne.Window) {
-	screen := d.newRepoPickerScreen(win,
-		func(repo string) {
-			target, resolvedName := guiTargetForRepo(d.Cfg, repo)
-			d.showCodespaceSelector(win, repo, target, resolvedName)
-		},
-		func() { win.Close() },
-	)
-	win.SetContent(screen.canvas)
+func isRepoLike(s string) bool {
+	for _, c := range s {
+		if c == '/' {
+			return true
+		}
+	}
+	return false
 }
 
-// showCodespaceSelector displays the codespace selector screen.
-func (d *Daemon) showCodespaceSelector(win fyne.Window, repo string, target config.Target, resolvedName string) {
-	screen := d.newCodespaceScreen(win, repo, target, resolvedName,
-		func(cs *codespace.Codespace) {
-			if cs != nil {
-				d.runLaunchFlow(win, target, resolvedName, cs)
-			} else {
-				d.showWorkLabelInput(win, target, resolvedName)
-			}
-		},
-		func() { d.showRepoPicker(win) },
-		func() { win.Close() },
-	)
-	win.SetContent(screen.canvas)
-}
-
-// showWorkLabelInput displays the work label input screen.
-func (d *Daemon) showWorkLabelInput(win fyne.Window, target config.Target, resolvedName string) {
-	screen := newWorkLabelScreen(
-		func(label string) {
-			createTarget := target
-			createTarget.DisplayName = slug.BuildDisplayName(
-				target.Repository, target.Branch, label, target.DisplayName,
-			)
-			d.runCreateAndLaunch(win, createTarget, resolvedName)
-		},
-		func() { win.Close() },
-	)
-	win.SetContent(screen.canvas)
+// getEditor returns the configured editor implementation.
+func (d *Daemon) getEditor() editor.Editor {
+	editorName := ""
+	if d.Cfg != nil {
+		editorName = d.Cfg.Editor
+	}
+	ed, err := editor.ForName(editorName)
+	if err != nil {
+		log.Printf("editor: %v, falling back to zed", err)
+		ed, _ = editor.ForName("zed")
+	}
+	return ed
 }
 
 // runCreateAndLaunch creates a codespace and then launches it.
@@ -127,20 +105,6 @@ func (d *Daemon) runCreateAndLaunch(win fyne.Window, target config.Target, resol
 		}
 		d.runLaunchFlow(win, target, resolvedName, cs)
 	}()
-}
-
-// getEditor returns the configured editor implementation.
-func (d *Daemon) getEditor() editor.Editor {
-	editorName := ""
-	if d.Cfg != nil {
-		editorName = d.Cfg.Editor
-	}
-	ed, err := editor.ForName(editorName)
-	if err != nil {
-		log.Printf("editor: %v, falling back to zed", err)
-		ed, _ = editor.ForName("zed")
-	}
-	return ed
 }
 
 // runLaunchFlow runs the SSH setup and editor launch sequence.
@@ -209,7 +173,7 @@ func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedNa
 			return
 		}
 
-		// Configure editor-specific settings (e.g. Zed's settings.json).
+		// Configure editor-specific settings.
 		nickname := editor.ResolveNickname(
 			target.ZedNickname, target.DisplayName, selected.DisplayName, resolvedName,
 		)

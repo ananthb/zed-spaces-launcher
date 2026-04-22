@@ -6,33 +6,27 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/ananth/cosmonaut/internal/codespace"
 	"github.com/ananth/cosmonaut/internal/config"
 )
 
-// showPreferences opens a preferences window.
-func (d *Daemon) showPreferences() {
-	if d.app == nil {
-		return
-	}
-
-	fyne.Do(func() {
-		win := d.app.NewWindow("Preferences")
-		win.Resize(fyne.NewSize(420, 380))
-		win.SetFixedSize(true)
-		win.CenterOnScreen()
-		win.SetContent(d.buildPreferencesContent(win))
-		win.Show()
-	})
-}
-
-func (d *Daemon) buildPreferencesContent(win fyne.Window) fyne.CanvasObject {
+// buildSettingsPanel builds the settings content panel for the unified window.
+func (d *Daemon) buildSettingsPanel(win fyne.Window) fyne.CanvasObject {
 	var items []fyne.CanvasObject
+
+	heading := widget.NewLabel("Settings")
+	heading.TextStyle = fyne.TextStyle{Bold: true}
+	items = append(items, heading)
 
 	// GitHub auth section.
 	items = append(items, d.buildAuthSection(win))
+	items = append(items, widget.NewSeparator())
+
+	// Editor selection.
+	items = append(items, d.buildEditorSection())
 	items = append(items, widget.NewSeparator())
 
 	// Daemon settings.
@@ -58,7 +52,22 @@ func (d *Daemon) buildPreferencesContent(win fyne.Window) fyne.CanvasObject {
 		go openFile(configPath)
 	}))
 
-	return container.NewPadded(container.NewVBox(items...))
+	return container.NewVScroll(container.NewPadded(container.NewVBox(items...)))
+}
+
+// showPreferences opens settings as a separate window (called from tray menu).
+func (d *Daemon) showPreferences() {
+	if d.app == nil {
+		return
+	}
+	fyne.Do(func() {
+		win := d.app.NewWindow("Cosmonaut Settings")
+		win.Resize(fyne.NewSize(420, 400))
+		win.SetFixedSize(true)
+		win.CenterOnScreen()
+		win.SetContent(d.buildSettingsPanel(win))
+		win.Show()
+	})
 }
 
 func (d *Daemon) buildAuthSection(win fyne.Window) fyne.CanvasObject {
@@ -77,35 +86,41 @@ func (d *Daemon) buildAuthSection(win fyne.Window) fyne.CanvasObject {
 		actionBtn = widget.NewButton("Remove auth", func() {
 			go func() {
 				_, _ = d.Runner.Run([]string{"auth", "logout", "--hostname", "github.com", "--yes"})
-				fyne.Do(func() {
-					win.SetContent(d.buildPreferencesContent(win))
-					d.rebuildTrayMenu()
-				})
+				fyne.Do(func() { d.rebuildTrayMenu() })
 			}()
 		})
 	} else {
 		actionBtn = widget.NewButton("Log in...", func() {
 			go func() {
-				// Run gh auth login --web; it opens the browser automatically.
 				_, err := d.Runner.Run([]string{"auth", "login", "--web", "--hostname", "github.com"})
 				if err != nil {
 					log.Printf("auth login: %v", err)
 				}
-				fyne.Do(func() {
-					win.SetContent(d.buildPreferencesContent(win))
-					d.rebuildTrayMenu()
-				})
+				fyne.Do(func() { d.rebuildTrayMenu() })
 			}()
 		})
 	}
 
-	return container.NewHBox(statusLabel, actionBtn)
+	return container.NewHBox(statusLabel, layout.NewSpacer(), actionBtn)
+}
+
+func (d *Daemon) buildEditorSection() fyne.CanvasObject {
+	currentEditor := d.Cfg.Editor
+	if currentEditor == "" {
+		currentEditor = "zed"
+	}
+	editorSelect := widget.NewSelect([]string{"zed", "neovim"}, func(val string) {
+		d.Cfg.Editor = val
+		d.persistConfig()
+	})
+	editorSelect.Selected = currentEditor
+
+	return widget.NewForm(widget.NewFormItem("Editor", editorSelect))
 }
 
 func (d *Daemon) buildDaemonSection() fyne.CanvasObject {
 	daemon := d.Cfg.Daemon
 
-	// Hotkey action.
 	currentAction := daemon.HotkeyAction
 	if currentAction == "" {
 		currentAction = "picker"
@@ -116,7 +131,6 @@ func (d *Daemon) buildDaemonSection() fyne.CanvasObject {
 	})
 	actionSelect.Selected = currentAction
 
-	// Poll interval.
 	currentPoll := daemon.PollInterval
 	if currentPoll == "" {
 		currentPoll = "5m"
@@ -127,11 +141,10 @@ func (d *Daemon) buildDaemonSection() fyne.CanvasObject {
 	})
 	pollSelect.Selected = currentPoll
 
-	form := widget.NewForm(
+	return widget.NewForm(
 		widget.NewFormItem("Hotkey action", actionSelect),
 		widget.NewFormItem("Poll interval", pollSelect),
 	)
-	return form
 }
 
 func (d *Daemon) buildTargetSection() fyne.CanvasObject {
@@ -141,7 +154,6 @@ func (d *Daemon) buildTargetSection() fyne.CanvasObject {
 	heading := widget.NewLabel(fmt.Sprintf("Target: %s", targetName))
 	heading.TextStyle = fyne.TextStyle{Bold: true}
 
-	// Auto-stop.
 	currentAutoStop := t.AutoStop
 	if currentAutoStop == "" {
 		currentAutoStop = "off"
@@ -158,7 +170,6 @@ func (d *Daemon) buildTargetSection() fyne.CanvasObject {
 	})
 	autoStopSelect.Selected = currentAutoStop
 
-	// Pre-warm.
 	currentPreWarm := t.PreWarm
 	if currentPreWarm == "" {
 		currentPreWarm = "off"

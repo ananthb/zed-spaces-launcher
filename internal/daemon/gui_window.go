@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	guiWidth  float32 = 700
-	guiHeight float32 = 450
+	guiWidth  float32 = 560
+	guiHeight float32 = 400
 )
 
 // unifiedWindow is the main Cosmonaut window with sidebar + content.

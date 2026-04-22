@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	cosmoWinW float32 = 680
-	cosmoWinH float32 = 460
+	cosmoWinW float32 = 560
+	cosmoWinH float32 = 400
 )
 
 // newCosmoWindow replaces newUnifiedWindow. Swap the call site in

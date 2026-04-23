@@ -109,6 +109,7 @@ let
       hotkeyAction = cfg.daemon.hotkeyAction;
       terminal = cfg.daemon.terminal;
       pollInterval = cfg.daemon.pollInterval;
+      inhibitSleep = cfg.daemon.inhibitSleep;
     });
   });
 
@@ -186,6 +187,18 @@ in
         type = lib.types.nullOr lib.types.str;
         default = "5m";
         description = "Interval for polling codespace states.";
+      };
+
+      inhibitSleep = lib.mkOption {
+        type = lib.types.enum [ "off" "sleep" "sleep+shutdown" ];
+        default = "off";
+        description = ''
+          Hold a sleep/shutdown inhibitor while a codespace session is active:
+          - "off" (default): never inhibit
+          - "sleep": inhibit idle sleep while any launched SSH session is alive
+          - "sleep+shutdown": also inhibit shutdown (Linux only; on macOS this
+            degrades to "sleep" because there is no user-space shutdown inhibitor)
+        '';
       };
     };
   };

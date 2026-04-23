@@ -28,15 +28,21 @@ type Daemon struct {
 	mu         sync.Mutex
 	codespaces []codespace.Codespace
 	stopCh     chan struct{}
+	sessions   *SessionTracker
 }
 
 // New creates a new Daemon with the given config.
 func New(cfg *config.Config, configPath string) *Daemon {
+	mode := "off"
+	if cfg != nil && cfg.Daemon != nil {
+		mode = cfg.Daemon.InhibitSleep
+	}
 	return &Daemon{
 		Cfg:        cfg,
 		ConfigPath: configPath,
 		Runner:     codespace.DefaultGHRunner{},
 		stopCh:     make(chan struct{}),
+		sessions:   newSessionTracker(mode),
 	}
 }
 
@@ -84,6 +90,10 @@ func (d *Daemon) Stop() {
 		return
 	default:
 		close(d.stopCh)
+	}
+
+	if d.sessions != nil {
+		d.sessions.Stop()
 	}
 
 	if d.app != nil {

@@ -132,6 +132,9 @@ func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedNa
 					fyne.Do(func() { dialog.ShowError(err, win) })
 					return
 				}
+				if d.sessions != nil {
+					d.sessions.TrackSession(alias)
+				}
 				fyne.Do(func() { win.Close() })
 				return
 			}
@@ -187,6 +190,9 @@ func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedNa
 		if err := ed.LaunchRemote(sshAlias, target.WorkspacePath); err != nil {
 			fyne.Do(func() { dialog.ShowError(err, win) })
 			return
+		}
+		if d.sessions != nil {
+			d.sessions.TrackSession(sshAlias)
 		}
 
 		fyne.Do(func() { win.Close() })

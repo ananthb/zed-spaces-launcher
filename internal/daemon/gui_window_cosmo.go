@@ -269,6 +269,9 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 		go func() {
 			sshAlias := fmt.Sprintf("cs.%s.github.dev", cs.Name)
 			openSSHInTerminal(sshAlias, target.WorkspacePath)
+			if uw.daemon.sessions != nil {
+				uw.daemon.sessions.TrackSession(sshAlias)
+			}
 		}()
 	})
 

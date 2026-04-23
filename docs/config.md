@@ -61,3 +61,4 @@ These go in the top-level `"daemon"` object and configure the menu bar applet.
 | `hotkeyAction` | string | `picker` (default), `previous`, or `default` |
 | `terminal` | string | Terminal app for picker; `auto` to detect |
 | `pollInterval` | string | Codespace poll interval (e.g. `5m`) |
+| `inhibitSleep` | string | Hold a sleep inhibitor while a launched SSH session is alive: `off` (default), `sleep`, or `sleep+shutdown`. On macOS, `sleep+shutdown` degrades to `sleep` (no user-space shutdown inhibitor). |

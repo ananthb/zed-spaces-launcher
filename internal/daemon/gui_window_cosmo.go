@@ -18,6 +18,7 @@ package daemon
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -270,50 +271,61 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 		}
 	}
 
+	// Branch as a small link under the title.
+	branchLink := widget.NewHyperlink(
+		fmt.Sprintf("⎇ %s", branchStr),
+		githubURL(repo, "tree", branchStr),
+	)
+	branchLink.TextStyle = fyne.TextStyle{Monospace: true}
+
 	sshBtn := widget.NewButton("SSH", func() {
 		go func() {
-			// Open SSH session in default terminal.
 			sshAlias := fmt.Sprintf("cs.%s.github.dev", cs.Name)
 			openSSHInTerminal(sshAlias, target.WorkspacePath)
 		}()
 	})
 
-	heroInfo := container.NewVBox(statusRow, heroTitle, heroName)
+	heroInfo := container.NewVBox(statusRow, heroTitle, heroName, branchLink)
 	actions := container.NewHBox(openBtn, editorSel, sshBtn, layout.NewSpacer(), deleteBtn)
 
-	// Meta details as a compact form — wraps and shrinks naturally.
-	branchVal := widget.NewLabel(branchStr)
-	branchVal.TextStyle = fyne.TextStyle{Monospace: true}
-	branchVal.Truncation = fyne.TextTruncateEllipsis
-
-	nameVal := widget.NewLabel(cs.Name)
-	nameVal.TextStyle = fyne.TextStyle{Monospace: true}
-	nameVal.Truncation = fyne.TextTruncateEllipsis
-
-	repoVal := widget.NewLabel(repo)
-	repoVal.Truncation = fyne.TextTruncateEllipsis
-
-	sshHost := widget.NewLabel(fmt.Sprintf("cs.%s.github.dev", cs.Name))
+	// ── SSH CONNECTION section
+	sshHost := canvas.NewText(fmt.Sprintf("cs.%s.github.dev", cs.Name), cText)
+	sshHost.TextSize = 12
 	sshHost.TextStyle = fyne.TextStyle{Monospace: true}
-	sshHost.Truncation = fyne.TextTruncateEllipsis
 
-	pathVal := widget.NewLabel(target.WorkspacePath)
-	pathVal.TextStyle = fyne.TextStyle{Monospace: true}
-	pathVal.Truncation = fyne.TextTruncateEllipsis
+	sshPort := canvas.NewText("port 2222", cTextDim)
+	sshPort.TextSize = 11
+	sshPort.TextStyle = fyne.TextStyle{Monospace: true}
 
-	meta := widget.NewForm(
-		widget.NewFormItem("Branch", branchVal),
-		widget.NewFormItem("Repository", repoVal),
-		widget.NewFormItem("Codespace", nameVal),
-		widget.NewFormItem("SSH Host", sshHost),
-		widget.NewFormItem("Path", pathVal),
+	sshPath := canvas.NewText(target.WorkspacePath, cTextDim)
+	sshPath.TextSize = 11
+	sshPath.TextStyle = fyne.TextStyle{Monospace: true}
+
+	sshSection := container.NewVBox(
+		caption("SSH CONNECTION"),
+		sshHost, sshPort, sshPath,
+	)
+
+	// ── CODESPACE section
+	csNameLbl := canvas.NewText(cs.Name, cText)
+	csNameLbl.TextSize = 12
+	csNameLbl.TextStyle = fyne.TextStyle{Monospace: true}
+
+	repoLink := widget.NewHyperlink(
+		repo,
+		githubURL(repo),
+	)
+
+	csSection := container.NewVBox(
+		caption("CODESPACE"),
+		csNameLbl, repoLink,
 	)
 
 	body := container.NewVBox(
 		heroInfo,
 		actions,
 		widget.NewSeparator(),
-		meta,
+		container.NewGridWithColumns(2, sshSection, csSection),
 	)
 	uw.setContent(container.NewPadded(body))
 }
@@ -486,6 +498,17 @@ func fetchBranches(runner codespace.GHRunner, repo string) []string {
 		}
 	}
 	return branches
+}
+
+// githubURL builds a GitHub URL from path segments. No parsing needed since
+// we construct the URL struct directly.
+func githubURL(pathSegments ...string) *url.URL {
+	u := url.URL{
+		Scheme: "https",
+		Host:   "github.com",
+		Path:   strings.Join(pathSegments, "/"),
+	}
+	return &u
 }
 
 // openSSHInTerminal opens an SSH session to a codespace in the default terminal.

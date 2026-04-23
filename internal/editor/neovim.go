@@ -23,49 +23,48 @@ func (n *NeovimEditor) FindBinary() (string, error) {
 }
 
 func (n *NeovimEditor) ConfigureConnection(sshAlias, workspacePath, nickname string, uploadBinary *bool) error {
-	// Neovim has no equivalent of Zed's settings.json SSH connections.
 	return nil
 }
 
 func (n *NeovimEditor) LaunchRemote(sshAlias, workspacePath string) error {
-	// Launch SSH into the codespace with nvim as the command.
-	sshCmd := fmt.Sprintf("cd %s && nvim", workspacePath)
-
 	if runtime.GOOS == "darwin" {
-		return launchInTerminalDarwin(n.Terminal, sshAlias, sshCmd)
+		return launchInTerminalDarwin(n.Terminal, sshAlias, workspacePath)
 	}
-	return launchInTerminalLinux(n.Terminal, sshAlias, sshCmd)
+	return launchInTerminalLinux(n.Terminal, sshAlias, workspacePath)
 }
 
-func launchInTerminalDarwin(terminal, sshAlias, sshCmd string) error {
-	if terminal == "" || terminal == "auto" {
-		// Try common terminals in order of preference.
-		for _, app := range []string{"iTerm", "Ghostty", "Alacritty", "Terminal"} {
-			if err := exec.Command("open", "-a", app,
-				"--args", "ssh", "-t", sshAlias, sshCmd).Run(); err == nil {
-				return nil
-			}
-		}
-		// Fallback: use osascript to open Terminal.app with ssh command.
+func launchInTerminalDarwin(terminal, sshAlias, workspacePath string) error {
+	sshCmd := fmt.Sprintf("ssh -t %s 'cd %s && nvim'", sshAlias, workspacePath)
+
+	if terminal != "" && terminal != "auto" {
+		// User specified a terminal app.
 		script := fmt.Sprintf(
-			`tell application "Terminal" to do script "ssh -t %s '%s'"`,
-			sshAlias, sshCmd,
-		)
+			`tell application %q to activate
+tell application %q
+do script %q
+end tell`, terminal, terminal, sshCmd)
 		return exec.Command("osascript", "-e", script).Run()
 	}
-	return exec.Command("open", "-a", terminal,
-		"--args", "ssh", "-t", sshAlias, sshCmd).Run()
+
+	// Default: open in Terminal.app
+	script := fmt.Sprintf(
+		`tell application "Terminal"
+activate
+do script %q
+end tell`, sshCmd)
+	return exec.Command("osascript", "-e", script).Run()
 }
 
-func launchInTerminalLinux(terminal, sshAlias, sshCmd string) error {
-	if terminal == "" || terminal == "auto" {
-		// Try common terminals.
-		for _, term := range []string{"ghostty", "alacritty", "kitty", "gnome-terminal", "xterm"} {
-			if _, err := exec.LookPath(term); err == nil {
-				return exec.Command(term, "-e", "ssh", "-t", sshAlias, sshCmd).Run()
-			}
-		}
-		return fmt.Errorf("no terminal emulator found; set daemon.terminal in config")
+func launchInTerminalLinux(terminal, sshAlias, workspacePath string) error {
+	sshCmd := fmt.Sprintf("ssh -t %s 'cd %s && nvim'", sshAlias, workspacePath)
+
+	if terminal != "" && terminal != "auto" {
+		return exec.Command(terminal, "-e", "sh", "-c", sshCmd).Run()
 	}
-	return exec.Command(terminal, "-e", "ssh", "-t", sshAlias, sshCmd).Run()
+	for _, term := range []string{"ghostty", "alacritty", "kitty", "gnome-terminal", "xterm"} {
+		if _, err := exec.LookPath(term); err == nil {
+			return exec.Command(term, "-e", "sh", "-c", sshCmd).Run()
+		}
+	}
+	return fmt.Errorf("no terminal emulator found; set daemon.terminal in config")
 }

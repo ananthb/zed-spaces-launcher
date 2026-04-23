@@ -247,9 +247,14 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 	}
 
 	repoLink := widget.NewHyperlink(repo, githubURL(repo))
-	branchLink := widget.NewHyperlink(fmt.Sprintf("⎇ %s", branchStr), githubURL(repo, "tree", branchStr))
-	branchLink.TextStyle = fyne.TextStyle{Monospace: true}
-	repoRow := container.NewHBox(repoLink, branchLink)
+	branchLink := widget.NewHyperlink(branchStr, githubURL(repo, "tree", branchStr))
+
+	repoIcon := canvas.NewText("⌂", cTextDim)
+	repoIcon.TextSize = 12
+	branchIcon := canvas.NewText("⎇", cTextDim)
+	branchIcon.TextSize = 12
+
+	repoRow := container.NewHBox(repoIcon, repoLink, branchIcon, branchLink)
 
 	// ── ACTIONS
 	selectedEditor := uw.daemon.getEditor().Name()

@@ -228,8 +228,14 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 	stateLbl.TextSize = 10
 	stateLbl.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
 
-	heroTitle := canvas.NewText(csLabel(*cs), cText)
-	heroTitle.TextSize = 20
+	// Title: display name if set, otherwise codespace name. Branch is
+	// shown separately as the ⎇ link below.
+	titleText := cs.DisplayName
+	if titleText == "" {
+		titleText = cs.Name
+	}
+	heroTitle := canvas.NewText(titleText, cText)
+	heroTitle.TextSize = 16
 	heroTitle.TextStyle = fyne.TextStyle{Bold: true}
 
 	heroName := canvas.NewText(cs.Name, cTextMute)

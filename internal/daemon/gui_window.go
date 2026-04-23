@@ -10,9 +10,9 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
-	"github.com/ananth/cosmonaut/internal/codespace"
-	"github.com/ananth/cosmonaut/internal/config"
-	"github.com/ananth/cosmonaut/internal/history"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/history"
 )
 
 const (

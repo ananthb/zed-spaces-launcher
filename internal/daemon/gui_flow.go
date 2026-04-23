@@ -8,11 +8,11 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
 
-	"github.com/ananth/cosmonaut/internal/codespace"
-	"github.com/ananth/cosmonaut/internal/config"
-	"github.com/ananth/cosmonaut/internal/editor"
-	"github.com/ananth/cosmonaut/internal/history"
-	"github.com/ananth/cosmonaut/internal/sshconfig"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/editor"
+	"github.com/linuskendall/cosmonaut/internal/history"
+	"github.com/linuskendall/cosmonaut/internal/sshconfig"
 )
 
 // showGUI opens the unified Cosmonaut window.

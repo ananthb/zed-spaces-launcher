@@ -32,11 +32,11 @@ jobs:
           gomarkdoc --output docs/api/codespace.md ./internal/codespace/
           gomarkdoc --output docs/api/config.md ./internal/config/
           gomarkdoc --output docs/api/daemon.md ./internal/daemon/
+          gomarkdoc --output docs/api/editor.md ./internal/editor/
           gomarkdoc --output docs/api/history.md ./internal/history/
           gomarkdoc --output docs/api/slug.md ./internal/slug/
           gomarkdoc --output docs/api/sshconfig.md ./internal/sshconfig/
           gomarkdoc --output docs/api/tui.md ./internal/tui/
-          gomarkdoc --output docs/api/zed.md ./internal/zed/
 
       - uses: actions/setup-python@v5
         with:

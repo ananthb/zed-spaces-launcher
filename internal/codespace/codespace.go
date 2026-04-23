@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ananth/cosmonaut/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/config"
 )
 
 // RepoField handles the gh CLI returning repository as either a string or an object.

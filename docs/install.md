@@ -3,13 +3,20 @@
 ## Requirements
 
 - [`gh`](https://cli.github.com/) installed and authenticated (`gh auth login`)
-- [`zed`](https://zed.dev) installed locally
+- [`zed`](https://zed.dev) (default) or `nvim` installed locally, matching the editor you plan to launch
 - GitHub Codespaces image includes an SSH server
     - For standard dev containers, use the [`ghcr.io/devcontainers/features/sshd:1`](https://github.com/devcontainers/features/tree/main/src/sshd) feature
 
 ## macOS
 
-Download the `.dmg` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases), open it, and drag **Cosmonaut.app** to Applications. Then double-click **Install CLI.command** in the DMG to symlink the `cosmonaut` CLI into `/usr/local/bin`.
+Download the `.dmg` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases) and open it. The DMG contains the `cosmonaut` binary and an example config. Copy the binary somewhere on `PATH`:
+
+```bash
+sudo cp /Volumes/cosmonaut/cosmonaut /usr/local/bin/
+xattr -d com.apple.quarantine /usr/local/bin/cosmonaut
+```
+
+The `xattr` step clears the Gatekeeper quarantine flag that macOS applies to files pulled from a downloaded DMG.
 
 Available for: `aarch64` (Apple Silicon).
 
@@ -24,7 +31,7 @@ chmod +x cosmonaut-*.AppImage
 ./cosmonaut-*.AppImage
 ```
 
-Available for: `amd64`, `arm64`.
+Available for: `amd64`.
 
 ### Tarball
 
@@ -38,7 +45,7 @@ cp cosmonaut/cosmonaut.service ~/.config/systemd/user/
 systemctl --user enable --now cosmonaut
 ```
 
-Available for: `amd64`, `arm64`.
+Available for: `amd64`.
 
 ## Nix flake
 
@@ -74,7 +81,9 @@ This generates the config file, wraps the binary with `--config`, sets up SSH in
 ## From source
 
 ```bash
-go install github.com/ananth/cosmonaut@latest
+git clone https://github.com/linuskendall/zed-spaces-launcher
+cd zed-spaces-launcher
+go build -o cosmonaut .
 ```
 
 Requires Go 1.26+ and CGo (for the Fyne GUI toolkit used by the applet).

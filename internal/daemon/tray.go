@@ -8,8 +8,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 
-	"github.com/ananth/cosmonaut/internal/codespace"
-	"github.com/ananth/cosmonaut/internal/history"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/history"
 )
 
 const maxSubmenuCodespaces = 5

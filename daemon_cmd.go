@@ -7,9 +7,9 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/spf13/cobra"
 
-	"github.com/ananth/cosmonaut/internal/config"
-	"github.com/ananth/cosmonaut/internal/daemon"
-	"github.com/ananth/cosmonaut/internal/migrate"
+	"github.com/linuskendall/cosmonaut/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/daemon"
+	"github.com/linuskendall/cosmonaut/internal/migrate"
 )
 
 // appletConfigPath returns the default config path for the applet

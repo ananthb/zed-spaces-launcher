@@ -8,7 +8,7 @@ import (
 
 	"golang.design/x/hotkey"
 
-	"github.com/ananth/cosmonaut/internal/history"
+	"github.com/linuskendall/cosmonaut/internal/history"
 )
 
 // defaultHotkey returns the platform default hotkey string.

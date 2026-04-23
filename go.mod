@@ -1,4 +1,4 @@
-module github.com/ananth/cosmonaut
+module github.com/linuskendall/cosmonaut
 
 go 1.26.1
 

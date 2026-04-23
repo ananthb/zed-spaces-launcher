@@ -7,7 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 
-	"github.com/ananth/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
 )
 
 func (d *Daemon) startPoller() {

@@ -111,8 +111,13 @@
             pkgs.runCommand "cosmonaut-${arch}.tar.gz"
               { nativeBuildInputs = [ pkgs.gzip ]; }
               ''
+                # Ship the real Go binary (.cosmonaut-wrapped), not the nix
+                # wrapper at bin/cosmonaut — that wrapper hardcodes /nix/store
+                # paths and is unusable outside the build sandbox. Users need
+                # gh on their own PATH, same as any standalone distribution.
                 mkdir -p cosmonaut
-                cp ${pkg}/bin/cosmonaut cosmonaut/
+                cp ${pkg}/bin/.cosmonaut-wrapped cosmonaut/cosmonaut
+                chmod +w cosmonaut/cosmonaut
                 cp ${./dist/cosmonaut.config.example.json} cosmonaut/
                 cp ${./dist/cosmonaut.service} cosmonaut/
                 tar -czvf $out -C . cosmonaut
@@ -175,50 +180,12 @@
                 cat ${appimageRuntime} appimage.squashfs > $out
                 chmod +x $out
               '';
-        }
-        // pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
-          release =
-            let
-              pkg = cosmonaut;
-              arch = if system == "x86_64-darwin" then "amd64" else "arm64";
-            in
-            pkgs.runCommand "cosmonaut-darwin-${arch}.dmg"
-              { nativeBuildInputs = [ pkgs.create-dmg ]; }
-              ''
-                mkdir -p staging
-                cp -rL "${pkg}/Applications/Cosmonaut.app" staging/
-
-                # Script that symlinks the CLI binary into /usr/local/bin
-                # so users can run cosmonaut from the terminal.
-                cat > staging/Install\ CLI.command << 'SCRIPT'
-                #!/bin/bash
-                set -e
-                dst="/usr/local/bin/cosmonaut"
-                src="/Applications/Cosmonaut.app/Contents/MacOS/cosmonaut"
-                if [ ! -f "$src" ]; then
-                  echo "Error: Cosmonaut.app not found in /Applications."
-                  echo "Drag the app to Applications first, then run this again."
-                  exit 1
-                fi
-                mkdir -p /usr/local/bin
-                ln -sf "$src" "$dst"
-                echo "Installed: $dst -> $src"
-                SCRIPT
-                chmod +x staging/Install\ CLI.command
-
-                # create-dmg returns exit code 2 when it succeeds but
-                # skips the code-signing step (expected in a sandbox).
-                create-dmg \
-                  --volname "Cosmonaut" \
-                  --window-size 600 400 \
-                  --icon-size 128 \
-                  --icon "Cosmonaut.app" 150 190 \
-                  --app-drop-link 450 190 \
-                  $out \
-                  staging/ \
-                || test $? -eq 2
-              '';
         };
+
+        # The Darwin DMG is assembled by .github/workflows/release.yml
+        # from the default package, not via a dedicated flake output,
+        # so that the shipped binary is the raw .cosmonaut-wrapped file
+        # instead of a nix wrapper referencing /nix/store paths.
 
         devShells.default = pkgs.mkShell {
           packages = [

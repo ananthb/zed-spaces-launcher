@@ -22,13 +22,13 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/ananth/cosmonaut/internal/codespace"
-	"github.com/ananth/cosmonaut/internal/config"
-	"github.com/ananth/cosmonaut/internal/editor"
-	"github.com/ananth/cosmonaut/internal/history"
-	"github.com/ananth/cosmonaut/internal/slug"
-	"github.com/ananth/cosmonaut/internal/sshconfig"
-	"github.com/ananth/cosmonaut/internal/tui"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/editor"
+	"github.com/linuskendall/cosmonaut/internal/history"
+	"github.com/linuskendall/cosmonaut/internal/slug"
+	"github.com/linuskendall/cosmonaut/internal/sshconfig"
+	"github.com/linuskendall/cosmonaut/internal/tui"
 )
 
 const defaultConfigPath = "cosmonaut.config.json"

@@ -33,7 +33,7 @@ import (
 
 	"image/color"
 
-	"github.com/ananth/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
 )
 
 const (

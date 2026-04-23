@@ -256,7 +256,7 @@ in
         PartOf = [ "graphical-session.target" ];
       };
       Service = {
-        ExecStart = "${wrappedPackage}/bin/cosmonaut daemon start";
+        ExecStart = "${wrappedPackage}/bin/cosmonaut applet";
         Restart = "on-failure";
         RestartSec = 5;
       };

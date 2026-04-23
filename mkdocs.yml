@@ -47,8 +47,8 @@ nav:
     - codespace: api/codespace.md
     - config: api/config.md
     - daemon: api/daemon.md
+    - editor: api/editor.md
     - history: api/history.md
     - slug: api/slug.md
     - sshconfig: api/sshconfig.md
     - tui: api/tui.md
-    - zed: api/zed.md

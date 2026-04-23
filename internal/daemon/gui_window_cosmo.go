@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -223,13 +224,12 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 
 	target, resolvedName := guiTargetForRepo(uw.daemon.Cfg, repo)
 
-	// Hero: state pill + title + primary/secondary actions
+	// ── HEADER: status + title + repo / branch links
 	stateLbl := canvas.NewText(strings.ToUpper(cs.State), stateColor(cs.State))
 	stateLbl.TextSize = 10
 	stateLbl.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
+	statusRow := container.NewHBox(stateDot(cs.State), stateLbl)
 
-	// Title: display name if set, otherwise codespace name. Branch is
-	// shown separately as the ⎇ link below.
 	titleText := cs.DisplayName
 	if titleText == "" {
 		titleText = cs.Name
@@ -238,13 +238,20 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 	heroTitle.TextSize = 16
 	heroTitle.TextStyle = fyne.TextStyle{Bold: true}
 
-	heroName := canvas.NewText(cs.Name, cTextMute)
-	heroName.TextSize = 11
-	heroName.TextStyle = fyne.TextStyle{Monospace: true}
+	branchStr := ""
+	if cs.GitStatus != nil {
+		branchStr = cs.GitStatus.Ref
+		if branchStr == "" {
+			branchStr = cs.GitStatus.Branch
+		}
+	}
 
-	statusRow := container.NewHBox(stateDot(cs.State), stateLbl)
+	repoLink := widget.NewHyperlink(repo, githubURL(repo))
+	branchLink := widget.NewHyperlink(fmt.Sprintf("⎇ %s", branchStr), githubURL(repo, "tree", branchStr))
+	branchLink.TextStyle = fyne.TextStyle{Monospace: true}
+	repoRow := container.NewHBox(repoLink, branchLink)
 
-	// Editor selector — pick which editor to open with.
+	// ── ACTIONS
 	selectedEditor := uw.daemon.getEditor().Name()
 	editorSel := widget.NewSelect([]string{"zed", "neovim"}, func(val string) {
 		selectedEditor = val
@@ -252,11 +259,17 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 	editorSel.Selected = selectedEditor
 
 	openBtn := primaryButton("Open", func() {
-		// Temporarily set the config editor to the selected one for this launch.
 		origEditor := uw.daemon.Cfg.Editor
 		uw.daemon.Cfg.Editor = selectedEditor
 		uw.daemon.runLaunchFlow(uw.win, target, resolvedName, cs)
 		uw.daemon.Cfg.Editor = origEditor
+	})
+
+	sshBtn := widget.NewButton("SSH", func() {
+		go func() {
+			sshAlias := fmt.Sprintf("cs.%s.github.dev", cs.Name)
+			openSSHInTerminal(sshAlias, target.WorkspacePath)
+		}()
 	})
 
 	deleteBtn := destructiveButton("Delete", func() {
@@ -269,69 +282,44 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 		}()
 	})
 
-	branchStr := ""
-	if cs.GitStatus != nil {
-		branchStr = cs.GitStatus.Ref
-		if branchStr == "" {
-			branchStr = cs.GitStatus.Branch
-		}
-	}
-
-	// Branch as a small link under the title.
-	branchLink := widget.NewHyperlink(
-		fmt.Sprintf("⎇ %s", branchStr),
-		githubURL(repo, "tree", branchStr),
-	)
-	branchLink.TextStyle = fyne.TextStyle{Monospace: true}
-
-	sshBtn := widget.NewButton("SSH", func() {
-		go func() {
-			sshAlias := fmt.Sprintf("cs.%s.github.dev", cs.Name)
-			openSSHInTerminal(sshAlias, target.WorkspacePath)
-		}()
-	})
-
-	heroInfo := container.NewVBox(statusRow, heroTitle, heroName, branchLink)
 	actions := container.NewHBox(openBtn, editorSel, sshBtn, layout.NewSpacer(), deleteBtn)
 
-	// ── SSH CONNECTION section
-	sshHost := canvas.NewText(fmt.Sprintf("cs.%s.github.dev", cs.Name), cText)
-	sshHost.TextSize = 12
-	sshHost.TextStyle = fyne.TextStyle{Monospace: true}
+	// ── INFO: codespace details + SSH connection
+	csNameVal := widget.NewLabel(cs.Name)
+	csNameVal.TextStyle = fyne.TextStyle{Monospace: true}
+	csNameVal.Truncation = fyne.TextTruncateEllipsis
 
-	sshPort := canvas.NewText("port 2222", cTextDim)
-	sshPort.TextSize = 11
-	sshPort.TextStyle = fyne.TextStyle{Monospace: true}
+	machineVal := widget.NewLabel(cs.MachineName)
+	machineVal.Truncation = fyne.TextTruncateEllipsis
 
-	sshPath := canvas.NewText(target.WorkspacePath, cTextDim)
-	sshPath.TextSize = 11
-	sshPath.TextStyle = fyne.TextStyle{Monospace: true}
+	createdVal := widget.NewLabel(formatTimeAgo(cs.CreatedAt))
+	lastUsedVal := widget.NewLabel(formatTimeAgo(cs.LastUsedAt))
 
-	sshSection := container.NewVBox(
-		caption("SSH CONNECTION"),
-		sshHost, sshPort, sshPath,
-	)
+	sshHostVal := widget.NewLabel(fmt.Sprintf("cs.%s.github.dev", cs.Name))
+	sshHostVal.TextStyle = fyne.TextStyle{Monospace: true}
+	sshHostVal.Truncation = fyne.TextTruncateEllipsis
 
-	// ── CODESPACE section
-	csNameLbl := canvas.NewText(cs.Name, cText)
-	csNameLbl.TextSize = 12
-	csNameLbl.TextStyle = fyne.TextStyle{Monospace: true}
+	pathVal := widget.NewLabel(target.WorkspacePath)
+	pathVal.TextStyle = fyne.TextStyle{Monospace: true}
+	pathVal.Truncation = fyne.TextTruncateEllipsis
 
-	repoLink := widget.NewHyperlink(
-		repo,
-		githubURL(repo),
-	)
-
-	csSection := container.NewVBox(
-		caption("CODESPACE"),
-		csNameLbl, repoLink,
+	info := widget.NewForm(
+		widget.NewFormItem("Codespace", csNameVal),
+		widget.NewFormItem("Machine", machineVal),
+		widget.NewFormItem("Created", createdVal),
+		widget.NewFormItem("Last used", lastUsedVal),
+		widget.NewFormItem("SSH host", sshHostVal),
+		widget.NewFormItem("Path", pathVal),
 	)
 
 	body := container.NewVBox(
-		heroInfo,
+		statusRow,
+		heroTitle,
+		repoRow,
+		widget.NewSeparator(),
 		actions,
 		widget.NewSeparator(),
-		container.NewGridWithColumns(2, sshSection, csSection),
+		info,
 	)
 	uw.setContent(container.NewPadded(body))
 }
@@ -508,6 +496,40 @@ func fetchBranches(runner codespace.GHRunner, repo string) []string {
 
 // githubURL builds a GitHub URL from path segments. No parsing needed since
 // we construct the URL struct directly.
+// formatTimeAgo turns an ISO 8601 timestamp into a relative time string.
+func formatTimeAgo(iso string) string {
+	if iso == "" {
+		return "—"
+	}
+	t, err := time.Parse(time.RFC3339, iso)
+	if err != nil {
+		return iso
+	}
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		m := int(d.Minutes())
+		if m == 1 {
+			return "1 min ago"
+		}
+		return fmt.Sprintf("%d min ago", m)
+	case d < 24*time.Hour:
+		h := int(d.Hours())
+		if h == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", h)
+	default:
+		days := int(d.Hours() / 24)
+		if days == 1 {
+			return "yesterday"
+		}
+		return fmt.Sprintf("%d days ago", days)
+	}
+}
+
 func githubURL(pathSegments ...string) *url.URL {
 	u := url.URL{
 		Scheme: "https",

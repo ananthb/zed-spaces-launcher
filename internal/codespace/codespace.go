@@ -53,6 +53,9 @@ type Codespace struct {
 	Repository  RepoField  `json:"repository"`
 	State       string     `json:"state,omitempty"`
 	GitStatus   *GitStatus `json:"gitStatus,omitempty"`
+	MachineName string     `json:"machineName,omitempty"`
+	CreatedAt   string     `json:"createdAt,omitempty"`
+	LastUsedAt  string     `json:"lastUsedAt,omitempty"`
 }
 
 // GHRunner abstracts the GitHub CLI for testability.
@@ -129,7 +132,7 @@ func ListCodespaces(runner GHRunner, repository string) ([]Codespace, error) {
 	out, err := runner.Run([]string{
 		"codespace", "list",
 		"--repo", repository,
-		"--json", "name,displayName,repository,state,gitStatus",
+		"--json", "name,displayName,repository,state,gitStatus,machineName,createdAt,lastUsedAt",
 	})
 	if err != nil {
 		return nil, err
@@ -146,7 +149,7 @@ func ListCodespaces(runner GHRunner, repository string) ([]Codespace, error) {
 func ListAllCodespaces(runner GHRunner) ([]Codespace, error) {
 	out, err := runner.Run([]string{
 		"codespace", "list",
-		"--json", "name,displayName,repository,state,gitStatus",
+		"--json", "name,displayName,repository,state,gitStatus,machineName,createdAt,lastUsedAt",
 	})
 	if err != nil {
 		return nil, err
@@ -227,7 +230,7 @@ func CreateCodespace(runner GHRunner, target config.Target) (*Codespace, error) 
 	out, err := runner.Run([]string{
 		"codespace", "view",
 		"--codespace", match,
-		"--json", "name,displayName,repository,state,gitStatus",
+		"--json", "name,displayName,repository,state,gitStatus,machineName,createdAt,lastUsedAt",
 	})
 	if err != nil {
 		return nil, err
@@ -258,7 +261,7 @@ func CreateCodespaceInteractive(runner GHRunner, target config.Target) (*Codespa
 	out, err := runner.Run([]string{
 		"codespace", "view",
 		"--codespace", match,
-		"--json", "name,displayName,repository,state,gitStatus",
+		"--json", "name,displayName,repository,state,gitStatus,machineName,createdAt,lastUsedAt",
 	})
 	if err != nil {
 		return nil, err

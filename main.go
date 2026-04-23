@@ -205,7 +205,7 @@ func run(configPath, targetName, codespaceName, editorFlag string, noOpen, dryRu
 		out, csErr := runner.Run([]string{
 			"codespace", "view",
 			"--codespace", codespaceName,
-			"--json", "name,displayName,repository,state,gitStatus",
+			"--json", "name,displayName,repository,state,gitStatus,machineName,createdAt,lastUsedAt",
 		})
 		if csErr != nil {
 			return fmt.Errorf("looking up codespace %q: %w", codespaceName, csErr)

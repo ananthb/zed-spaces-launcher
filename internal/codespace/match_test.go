@@ -1,6 +1,7 @@
 package codespace
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/linuskendall/cosmonaut/internal/config"
@@ -96,6 +97,71 @@ func TestBuildCreateArgsMapsOptionalFields(t *testing.T) {
 		if got[i] != want[i] {
 			t.Errorf("arg[%d] = %q, want %q", i, got[i], want[i])
 		}
+	}
+}
+
+func TestBuildCreateAPIBodyMapsAndConvertsDurations(t *testing.T) {
+	target := config.Target{
+		Repository:       "acme/demo",
+		Branch:           "main",
+		DisplayName:      "demo-main",
+		Machine:          "standardLinux32gb",
+		Location:         "EastUs",
+		DevcontainerPath: ".devcontainer/devcontainer.json",
+		IdleTimeout:      "30m",
+		RetentionPeriod:  "72h",
+	}
+
+	raw, err := buildCreateAPIBody(target)
+	if err != nil {
+		t.Fatalf("buildCreateAPIBody: %v", err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(raw, &body); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+
+	cases := map[string]any{
+		"ref":                      "main",
+		"display_name":             "demo-main",
+		"machine":                  "standardLinux32gb",
+		"location":                 "EastUs",
+		"devcontainer_path":        ".devcontainer/devcontainer.json",
+		"idle_timeout_minutes":     float64(30),
+		"retention_period_minutes": float64(72 * 60),
+	}
+	for k, want := range cases {
+		if got := body[k]; got != want {
+			t.Errorf("body[%q] = %v (%T), want %v (%T)", k, got, got, want, want)
+		}
+	}
+	if _, ok := body["ref"]; !ok {
+		t.Error("ref missing")
+	}
+	if len(body) != len(cases) {
+		t.Errorf("unexpected keys in body: %v", body)
+	}
+}
+
+func TestBuildCreateAPIBodyOmitsEmptyFields(t *testing.T) {
+	raw, err := buildCreateAPIBody(config.Target{Repository: "acme/demo"})
+	if err != nil {
+		t.Fatalf("buildCreateAPIBody: %v", err)
+	}
+	if string(raw) != "{}" {
+		t.Errorf("body = %s, want {}", raw)
+	}
+}
+
+func TestSplitRepoRejectsBadInput(t *testing.T) {
+	for _, bad := range []string{"", "acme", "acme/", "/demo", "/"} {
+		if _, _, err := splitRepo(bad); err == nil {
+			t.Errorf("splitRepo(%q) expected error", bad)
+		}
+	}
+	owner, name, err := splitRepo("acme/demo")
+	if err != nil || owner != "acme" || name != "demo" {
+		t.Errorf("splitRepo(acme/demo) = %q,%q,%v", owner, name, err)
 	}
 }
 

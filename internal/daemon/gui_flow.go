@@ -92,6 +92,16 @@ func (d *Daemon) getEditor() editor.Editor {
 	return ed
 }
 
+// showFlowError displays an error dialog and closes the window once the user
+// dismisses it, so a failed flow doesn't leave the UI stuck on a spinner.
+func showFlowError(win fyne.Window, err error) {
+	fyne.Do(func() {
+		d := dialog.NewError(err, win)
+		d.SetOnClosed(func() { win.Close() })
+		d.Show()
+	})
+}
+
 // runCreateAndLaunch creates a codespace and then launches it.
 func (d *Daemon) runCreateAndLaunch(win fyne.Window, target config.Target, resolvedName string) {
 	progress := newProgressScreen("Creating codespace...")
@@ -100,7 +110,7 @@ func (d *Daemon) runCreateAndLaunch(win fyne.Window, target config.Target, resol
 	go func() {
 		cs, err := codespace.CreateCodespace(d.Runner, target)
 		if err != nil {
-			fyne.Do(func() { dialog.ShowError(fmt.Errorf("creating codespace: %w", err), win) })
+			showFlowError(win, fmt.Errorf("creating codespace: %w", err))
 			return
 		}
 		d.runLaunchFlow(win, target, resolvedName, cs)
@@ -129,7 +139,7 @@ func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedNa
 			if alias, ok := sshconfig.ReadExistingAlias(paths.IncludeDir, selected.Name); ok {
 				setStatus(fmt.Sprintf("Launching %s...", ed.Name()))
 				if err := ed.LaunchRemote(alias, target.WorkspacePath); err != nil {
-					fyne.Do(func() { dialog.ShowError(err, win) })
+					showFlowError(win, err)
 					return
 				}
 				if d.sessions != nil {
@@ -143,7 +153,7 @@ func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedNa
 		// Ensure SSH connectivity.
 		setStatus("Waiting for codespace SSH...")
 		if err := codespace.EnsureReachable(d.Runner, selected.Name); err != nil {
-			fyne.Do(func() { dialog.ShowError(fmt.Errorf("SSH connectivity: %w", err), win) })
+			showFlowError(win, fmt.Errorf("SSH connectivity: %w", err))
 			return
 		}
 
@@ -151,28 +161,28 @@ func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedNa
 		setStatus("Fetching SSH config...")
 		sshCfg, err := codespace.GetSSHConfig(d.Runner, selected.Name)
 		if err != nil {
-			fyne.Do(func() { dialog.ShowError(err, win) })
+			showFlowError(win, err)
 			return
 		}
 
 		sshAlias, err := sshconfig.ParsePrimaryHostAlias(sshCfg)
 		if err != nil {
-			fyne.Do(func() { dialog.ShowError(err, win) })
+			showFlowError(win, err)
 			return
 		}
 
 		// Write SSH config.
 		paths := sshconfig.ResolvePaths()
 		if err := os.MkdirAll(paths.IncludeDir, 0700); err != nil {
-			fyne.Do(func() { dialog.ShowError(err, win) })
+			showFlowError(win, err)
 			return
 		}
 		if err := sshconfig.EnsureConfigIncludesGenerated(paths.MainConfigPath); err != nil {
-			fyne.Do(func() { dialog.ShowError(err, win) })
+			showFlowError(win, err)
 			return
 		}
 		if err := sshconfig.WriteCodespaceConfig(paths.IncludeDir, selected.Name, sshCfg); err != nil {
-			fyne.Do(func() { dialog.ShowError(err, win) })
+			showFlowError(win, err)
 			return
 		}
 
@@ -181,14 +191,14 @@ func (d *Daemon) runLaunchFlow(win fyne.Window, target config.Target, resolvedNa
 			target.ZedNickname, target.DisplayName, selected.DisplayName, resolvedName,
 		)
 		if err := ed.ConfigureConnection(sshAlias, target.WorkspacePath, nickname, target.UploadBinaryOverSSH); err != nil {
-			fyne.Do(func() { dialog.ShowError(err, win) })
+			showFlowError(win, err)
 			return
 		}
 
 		// Launch editor.
 		setStatus(fmt.Sprintf("Launching %s...", ed.Name()))
 		if err := ed.LaunchRemote(sshAlias, target.WorkspacePath); err != nil {
-			fyne.Do(func() { dialog.ShowError(err, win) })
+			showFlowError(win, err)
 			return
 		}
 		if d.sessions != nil {

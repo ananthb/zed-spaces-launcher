@@ -1,4 +1,4 @@
-// Package daemon — Cosmonaut custom Fyne theme.
+// Package daemon: Cosmonaut custom Fyne theme.
 //
 // Palette and type scale derived from the Cosmonaut design system
 // (Zed-inspired dark: graphite surfaces, lime accent, mono labels).
@@ -12,12 +12,12 @@ import (
 )
 
 // cosmoTheme implements fyne.Theme with Cosmonaut's visual tokens.
-// Colors are locked to the dark variant — the app presents consistently
+// Colors are locked to the dark variant: the app presents consistently
 // regardless of OS appearance. macOS tray icons still respect light/dark
 // via SetTemplateIcon because they use theme.NewThemedResource.
 type cosmoTheme struct{}
 
-// Tokens — keep in sync with design-system (ui-primitives.jsx).
+// Tokens: keep in sync with design-system (ui-primitives.jsx).
 var (
 	cBg           = color.NRGBA{0x0b, 0x0c, 0x0f, 0xff} // app background
 	cBgAlt        = color.NRGBA{0x0f, 0x10, 0x12, 0xff} // sidebar / input chrome
@@ -56,7 +56,7 @@ func (cosmoTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color.Col
 	case theme.ColorNamePrimary:
 		return cLime
 	case theme.ColorNameHover:
-		return color.NRGBA{0xff, 0xff, 0xff, 0x15} // subtle white overlay — works on both dark and lime
+		return color.NRGBA{0xff, 0xff, 0xff, 0x15} // subtle white overlay: works on both dark and lime
 	case theme.ColorNamePressed:
 		return color.NRGBA{0xff, 0xff, 0xff, 0x22}
 	case theme.ColorNameFocus:

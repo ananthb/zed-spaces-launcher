@@ -10,8 +10,8 @@ Run `cosmonaut --help` for flag and config field documentation.
 
 When no target is given, the tool enters a TUI:
 
-1. **Repository picker** — shows repos from your codespaces, config targets, and all your GitHub repositories. Type to filter, or type `owner/repo` to use any repository.
-2. **Codespace selector** — pick an existing codespace or create a new one. Press `d` to delete a codespace, `esc` to choose a different repo.
+1. **Repository picker**: shows repos from your codespaces, config targets, and all your GitHub repositories. Type to filter, or type `owner/repo` to use any repository.
+2. **Codespace selector**: pick an existing codespace or create a new one. Press `d` to delete a codespace, `esc` to choose a different repo.
 
 If a `defaultTarget` is set in the config, the tool jumps straight to the codespace selector for that repo. Press `esc` to go back to the full repo picker.
 

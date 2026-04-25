@@ -230,14 +230,14 @@ in
       config = {
         # Launch from the .app bundle so macOS associates the process
         # with the bundle (dock icon, app lifecycle, permissions).
-        # The .app binary only has the gh PATH wrapper — it doesn't
+        # The .app binary only has the gh PATH wrapper: it doesn't
         # include the home-manager --config wrapper, so pass it here.
         ProgramArguments = [
           "${wrappedPackage}/Applications/Cosmonaut.app/Contents/MacOS/cosmonaut"
           "--config" "${configFile}"
           "applet"
         ];
-        # Only restart on abnormal exit — lets the user quit cleanly
+        # Only restart on abnormal exit: lets the user quit cleanly
         # via the tray menu without launchd immediately restarting.
         KeepAlive = { SuccessfulExit = false; };
         RunAtLoad = true;

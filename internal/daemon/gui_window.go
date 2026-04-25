@@ -121,9 +121,9 @@ func (uw *unifiedWindow) setContent(obj fyne.CanvasObject) {
 }
 
 // --- Tree node ID scheme ---
-// "repo:<owner/name>" — branch node for a repo
-// "cs:<codespace-name>:<owner/name>" — leaf node for a codespace
-// "new:<owner/name>" — leaf node for "create new"
+// "repo:<owner/name>": branch node for a repo
+// "cs:<codespace-name>:<owner/name>": leaf node for a codespace
+// "new:<owner/name>": leaf node for "create new"
 
 const (
 	repoPrefix = "repo:"

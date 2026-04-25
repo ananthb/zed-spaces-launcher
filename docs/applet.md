@@ -8,12 +8,12 @@ cosmonaut applet
 
 ## Features
 
-- **System tray icon** — Z-in-cloud icon; hollow when idle, filled when tracking active codespaces
-- **Global hotkey** — configurable shortcut (default `Cmd+Shift+S` on macOS, `Ctrl+Shift+S` on Linux)
-- **Tray menu** — default target, recent repos, full picker
-- **Codespace polling** — monitors running codespaces, sends desktop notifications on state changes
-- **Pre-warm** — creates or starts codespaces on a daily schedule before work hours
-- **Sleep inhibitor** — optionally holds a sleep/shutdown inhibitor while a launched SSH session is alive (see the `inhibitSleep` daemon option)
+- **System tray icon**: Z-in-cloud icon; hollow when idle, filled when tracking active codespaces
+- **Global hotkey**: configurable shortcut (default `Cmd+Shift+S` on macOS, `Ctrl+Shift+S` on Linux)
+- **Tray menu**: default target, recent repos, full picker
+- **Codespace polling**: monitors running codespaces, sends desktop notifications on state changes
+- **Pre-warm**: creates or starts codespaces on a daily schedule before work hours
+- **Sleep inhibitor**: optionally holds a sleep/shutdown inhibitor while a launched SSH session is alive (see the `inhibitSleep` daemon option)
 
 The `autoStop` target field is reserved for a future idle-based auto-stop feature but is not yet acted on; codespace idle timeouts today come from `idleTimeout` passed to `gh codespace create`.
 

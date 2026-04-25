@@ -1,7 +1,7 @@
 // Cosmonaut native UI primitives.
 //
 // Small building blocks reused across the unified window, codespace
-// detail, create flow, and settings — keeps widget wiring consistent.
+// detail, create flow, and settings: keeps widget wiring consistent.
 package daemon
 
 import (
@@ -47,7 +47,7 @@ func caption(text string) *canvas.Text {
 }
 
 // ── surfaceCard ─────────────────────────────────────────────────────────
-// Wraps content in a subtle surface with a 1px border — replaces Fyne's
+// Wraps content in a subtle surface with a 1px border: replaces Fyne's
 // default grey "card" style with something closer to the design.
 func surfaceCard(content fyne.CanvasObject) fyne.CanvasObject {
 	bg := canvas.NewRectangle(cSurface)

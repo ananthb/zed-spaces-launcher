@@ -21,7 +21,7 @@ const (
 )
 
 // Run migrates old paths to the new cosmonaut locations.
-// Safe to call multiple times — it's a no-op if migration is already done.
+// Safe to call multiple times: it's a no-op if migration is already done.
 func Run() {
 	migrateDir(
 		filepath.Join(xdg.ConfigHome, oldName),

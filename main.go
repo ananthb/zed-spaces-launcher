@@ -196,7 +196,7 @@ func run(configPath, targetName, codespaceName, editorFlag string, noOpen, dryRu
 		return fmt.Errorf("no target was provided and config.defaultTarget is not set")
 	}
 
-	// Direct codespace launch — bypass all TUI selection.
+	// Direct codespace launch: bypass all TUI selection.
 	if codespaceName != "" {
 		if target.Repository == "" {
 			return fmt.Errorf("--codespace requires a target or repo argument to resolve workspace settings")
@@ -255,7 +255,7 @@ func run(configPath, targetName, codespaceName, editorFlag string, noOpen, dryRu
 			repoCodespaces := codespace.FilterByRepo(allCodespaces, repo)
 
 			if len(repoCodespaces) == 0 {
-				// No existing codespaces — skip selection, go straight to creation.
+				// No existing codespaces: skip selection, go straight to creation.
 				selected = nil
 				break
 			}
@@ -277,7 +277,7 @@ func run(configPath, targetName, codespaceName, editorFlag string, noOpen, dryRu
 				sorted = hist.SortRepos(repos)
 				recentCount = countRecent(sorted, hist)
 				if len(repos) == 0 {
-					return fmt.Errorf("no codespaces remain — create one with `gh codespace create` first")
+					return fmt.Errorf("no codespaces remain: create one with `gh codespace create` first")
 				}
 				continue
 			}
@@ -285,7 +285,7 @@ func run(configPath, targetName, codespaceName, editorFlag string, noOpen, dryRu
 			break
 		}
 	} else {
-		// Static target — list codespaces for the specific repo.
+		// Static target: list codespaces for the specific repo.
 		// When using a default target interactively (no explicit target name),
 		// allow the user to go back to pick a different repo.
 		allowBack := interactive && targetName == ""
@@ -357,7 +357,7 @@ func run(configPath, targetName, codespaceName, editorFlag string, noOpen, dryRu
 				}
 			}
 		} else if allowBack {
-			// No codespaces for default target — let user pick another repo.
+			// No codespaces for default target: let user pick another repo.
 			wentBack = true
 		}
 
@@ -416,7 +416,7 @@ func run(configPath, targetName, codespaceName, editorFlag string, noOpen, dryRu
 					sorted = hist.SortRepos(repos)
 					recentCount = countRecent(sorted, hist)
 					if len(repos) == 0 {
-						return fmt.Errorf("no codespaces remain — create one with `gh codespace create` first")
+						return fmt.Errorf("no codespaces remain: create one with `gh codespace create` first")
 					}
 					continue
 				}

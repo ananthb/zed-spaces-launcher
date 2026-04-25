@@ -41,7 +41,7 @@ func (d *Daemon) showGUI(args ...string) {
 		uw := d.newCosmoWindow()
 
 		if codespaceName != "" && targetArg != "" {
-			// Direct codespace launch — show progress immediately.
+			// Direct codespace launch: show progress immediately.
 			target, resolvedName := d.resolveGUITarget(targetArg)
 			cs := &codespace.Codespace{Name: codespaceName, Repository: codespace.RepoField(target.Repository)}
 			uw.win.Show()

@@ -16,7 +16,7 @@ import (
 // Each call to TrackSession launches a background scan for ssh processes
 // matching the given alias and watches their exit via kernel events
 // (pidfd on Linux, kqueue on macOS). Reconnections after the initial
-// scan window are not tracked — the next Cosmonaut launch re-scans.
+// scan window are not tracked: the next Cosmonaut launch re-scans.
 type SessionTracker struct {
 	mu        sync.Mutex
 	count     int
@@ -94,7 +94,7 @@ func (s *SessionTracker) removePid(pid int) {
 
 // TrackSession scans for SSH processes whose command line contains the given
 // alias, registers each and watches them for exit. Safe to call when mode is
-// "off" — it still runs but the inhibitor is a no-op.
+// "off": it still runs but the inhibitor is a no-op.
 //
 // The scan retries for a short window because the launch chain (osascript →
 // Terminal.app, or terminal emulator fork) means the ssh pid may not exist

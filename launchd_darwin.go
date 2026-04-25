@@ -15,7 +15,7 @@ func ensureLaunchdAgent() bool {
 
 	// Check if the agent is registered with launchd.
 	if err := exec.Command("launchctl", "print", uid+"/"+label).Run(); err != nil {
-		return false // not registered — fall back to inline
+		return false // not registered: fall back to inline
 	}
 
 	// Kick it (starts if not running, no-op if already running).

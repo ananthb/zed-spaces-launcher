@@ -236,7 +236,7 @@ var codespaceNameRe = regexp.MustCompile(`[A-Za-z0-9-]+-[A-Za-z0-9]{6,}`)
 // CreateCodespace creates a new codespace by POSTing directly to the GitHub REST
 // API (`POST /repos/{owner}/{repo}/codespaces`). This bypasses the interactive
 // prompts that `gh codespace create` emits when billing is paid by a third
-// party or when a machine type isn't specified — prompts that fail without a
+// party or when a machine type isn't specified: prompts that fail without a
 // terminal (e.g. from the tray/daemon). Use CreateCodespaceInteractive when
 // running from a real TTY and prompts are desired.
 func CreateCodespace(runner GHRunner, target config.Target) (*Codespace, error) {

@@ -1,4 +1,4 @@
-// Cosmonaut unified window — native Fyne implementation of the redesign.
+// Cosmonaut unified window: native Fyne implementation of the redesign.
 //
 // Layout:
 //
@@ -107,7 +107,7 @@ func (uw *unifiedWindow) buildCosmoSidebar() fyne.CanvasObject {
 		uw.tree.Refresh()
 	}
 
-	// Tree — reuse structure from gui_window.go but override selection callbacks.
+	// Tree: reuse structure from gui_window.go but override selection callbacks.
 	uw.tree = uw.buildTree()
 	uw.tree.OnSelected = func(id widget.TreeNodeID) {
 		if isRepoNode(id) {
@@ -404,7 +404,7 @@ func (uw *unifiedWindow) showCosmoCreateNew(repo string) {
 
 	repoLbl := widget.NewLabel(repo)
 
-	// Branch selector — starts with config branch or "main", fetches real branches async.
+	// Branch selector: starts with config branch or "main", fetches real branches async.
 	defaultBranch := target.Branch
 	if defaultBranch == "" {
 		defaultBranch = "main"
@@ -502,7 +502,7 @@ func fetchBranches(runner codespace.GHRunner, repo string) []string {
 // formatTimeAgo turns an ISO 8601 timestamp into a relative time string.
 func formatTimeAgo(iso string) string {
 	if iso == "" {
-		return "—"
+		return ":"
 	}
 	t, err := time.Parse(time.RFC3339, iso)
 	if err != nil {

@@ -70,7 +70,7 @@ func (d *Daemon) hotkeyAction() {
 				return
 			}
 		}
-		// No default target — fall through to picker.
+		// No default target: fall through to picker.
 		d.showGUI()
 
 	default: // "picker"
@@ -88,7 +88,7 @@ func (d *Daemon) hotkeyActionPrevious() {
 			d.showGUI(name)
 			return
 		}
-		// No config target — pass repo name directly so the child
+		// No config target: pass repo name directly so the child
 		// process can skip the repo selector TUI.
 		d.showGUI(repo)
 		return

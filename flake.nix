@@ -72,7 +72,7 @@
             install -Dm644 $src/dist/cosmonaut.config.example.json $out/share/cosmonaut/cosmonaut.config.example.json
             install -Dm644 $src/dist/cosmonaut.service $out/share/cosmonaut/cosmonaut.service
           '' + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
-            # macOS .app bundle — gives the binary a dock icon, proper
+            # macOS .app bundle: gives the binary a dock icon, proper
             # app lifecycle, and allows launchd to manage it correctly.
             # Files must be real copies (not symlinks into /nix/store)
             # or Gatekeeper rejects the bundle as damaged.
@@ -112,7 +112,7 @@
               { nativeBuildInputs = [ pkgs.gzip ]; }
               ''
                 # Ship the real Go binary (.cosmonaut-wrapped), not the nix
-                # wrapper at bin/cosmonaut — that wrapper hardcodes /nix/store
+                # wrapper at bin/cosmonaut: that wrapper hardcodes /nix/store
                 # paths and is unusable outside the build sandbox. Users need
                 # gh on their own PATH, same as any standalone distribution.
                 mkdir -p cosmonaut

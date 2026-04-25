@@ -6,19 +6,19 @@
 
 CLI and menu bar applet for GitHub Codespaces + [Zed](https://zed.dev).
 
-**[Documentation](https://linuskendall.github.io/zed-spaces-launcher/)** ·
-**[Configuration](https://linuskendall.github.io/zed-spaces-launcher/config/)** ·
-**[API Reference](https://linuskendall.github.io/zed-spaces-launcher/api/)**
+**[Documentation](https://linuskendall.github.io/cosmonaut/)** ·
+**[Configuration](https://linuskendall.github.io/cosmonaut/config/)** ·
+**[API Reference](https://linuskendall.github.io/cosmonaut/api/)**
 
 ## Install
 
 ### macOS
 
-Download the `.dmg` from [Releases](https://github.com/linuskendall/zed-spaces-launcher/releases), open it, and drag to Applications.
+Download the `.dmg` from [Releases](https://github.com/linuskendall/cosmonaut/releases), open it, and drag to Applications.
 
 ### Linux
 
-Download the `.AppImage` from [Releases](https://github.com/linuskendall/zed-spaces-launcher/releases):
+Download the `.AppImage` from [Releases](https://github.com/linuskendall/cosmonaut/releases):
 
 ```bash
 chmod +x cosmonaut-*.AppImage
@@ -29,11 +29,11 @@ chmod +x cosmonaut-*.AppImage
 
 ```nix
 {
-  inputs.cosmonaut.url = "github:linuskendall/zed-spaces-launcher";
+  inputs.cosmonaut.url = "github:linuskendall/cosmonaut";
 }
 ```
 
-Or with [Home Manager](https://linuskendall.github.io/zed-spaces-launcher/install/#home-manager) for declarative config + auto-start.
+Or with [Home Manager](https://linuskendall.github.io/cosmonaut/install/#home-manager) for declarative config + auto-start.
 
 ## Quick start
 

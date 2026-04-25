@@ -42,7 +42,7 @@ The Nix Home Manager module in `modules/home-manager.nix` also duplicates some d
    git tag -a v0.7.0 -m "v0.7.0"
    git push origin v0.7.0
    ```
-4. The [release workflow](https://github.com/linuskendall/zed-spaces-launcher/blob/main/.github/workflows/release.yml) runs automatically on tag push. It builds Linux (tarball + AppImage) and macOS (DMG) artifacts, generates checksums, signs them with cosign, and creates a GitHub release.
+4. The [release workflow](https://github.com/linuskendall/cosmonaut/blob/main/.github/workflows/release.yml) runs automatically on tag push. It builds Linux (tarball + AppImage) and macOS (DMG) artifacts, generates checksums, signs them with cosign, and creates a GitHub release.
 
 ## Updating documentation
 
@@ -54,6 +54,6 @@ To preview locally:
 mkdocs serve
 ```
 
-API reference docs under `docs/api/` are generated from godoc comments using [gomarkdoc](https://github.com/princjef/gomarkdoc). The [docs workflow](https://github.com/linuskendall/zed-spaces-launcher/blob/main/.github/workflows/docs.yml) regenerates and deploys them on push to `main`.
+API reference docs under `docs/api/` are generated from godoc comments using [gomarkdoc](https://github.com/princjef/gomarkdoc). The [docs workflow](https://github.com/linuskendall/cosmonaut/blob/main/.github/workflows/docs.yml) regenerates and deploys them on push to `main`.
 
 To add a new page, create a markdown file in `docs/` and add it to the `nav` section in `mkdocs.yml`.

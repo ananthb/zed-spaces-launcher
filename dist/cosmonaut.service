@@ -1,6 +1,6 @@
 [Unit]
 Description=cosmonaut menu bar applet
-Documentation=https://github.com/linuskendall/zed-spaces-launcher
+Documentation=https://github.com/linuskendall/cosmonaut
 After=graphical-session.target
 PartOf=graphical-session.target
 

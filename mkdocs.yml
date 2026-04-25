@@ -1,8 +1,8 @@
 site_name: cosmonaut
 site_description: CLI and menu bar applet for GitHub Codespaces + Zed
-site_url: https://linuskendall.github.io/zed-spaces-launcher/
-repo_url: https://github.com/linuskendall/zed-spaces-launcher
-repo_name: linuskendall/zed-spaces-launcher
+site_url: https://linuskendall.github.io/cosmonaut/
+repo_url: https://github.com/linuskendall/cosmonaut
+repo_name: linuskendall/cosmonaut
 
 theme:
   name: material

@@ -9,7 +9,7 @@
 
 ## macOS
 
-Download the `.dmg` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases) and open it. The DMG contains the `cosmonaut` binary and an example config. Copy the binary somewhere on `PATH`:
+Download the `.dmg` from [GitHub Releases](https://github.com/linuskendall/cosmonaut/releases) and open it. The DMG contains the `cosmonaut` binary and an example config. Copy the binary somewhere on `PATH`:
 
 ```bash
 sudo cp /Volumes/cosmonaut/cosmonaut /usr/local/bin/
@@ -24,7 +24,7 @@ Available for: `aarch64` (Apple Silicon).
 
 ### AppImage
 
-Download the `.AppImage` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases):
+Download the `.AppImage` from [GitHub Releases](https://github.com/linuskendall/cosmonaut/releases):
 
 ```bash
 chmod +x cosmonaut-*.AppImage
@@ -35,7 +35,7 @@ Available for: `amd64`.
 
 ### Tarball
 
-Download the `.tar.gz` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases). Each tarball includes the binary, an example config, and a systemd user service file.
+Download the `.tar.gz` from [GitHub Releases](https://github.com/linuskendall/cosmonaut/releases). Each tarball includes the binary, an example config, and a systemd user service file.
 
 ```bash
 tar xzf cosmonaut-amd64.tar.gz
@@ -52,7 +52,7 @@ Available for: `amd64`.
 ```nix
 # flake.nix
 {
-  inputs.cosmonaut.url = "github:linuskendall/zed-spaces-launcher";
+  inputs.cosmonaut.url = "github:linuskendall/cosmonaut";
 }
 ```
 
@@ -81,8 +81,8 @@ This generates the config file, wraps the binary with `--config`, sets up SSH in
 ## From source
 
 ```bash
-git clone https://github.com/linuskendall/zed-spaces-launcher
-cd zed-spaces-launcher
+git clone https://github.com/linuskendall/cosmonaut
+cd cosmonaut
 go build -o cosmonaut .
 ```
 
@@ -99,7 +99,7 @@ cosign verify-blob \
   --certificate cosmonaut-amd64.tar.gz.pem \
   --signature cosmonaut-amd64.tar.gz.sig \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp 'github.com/linuskendall/zed-spaces-launcher' \
+  --certificate-identity-regexp 'github.com/linuskendall/cosmonaut' \
   cosmonaut-amd64.tar.gz
 ```
 
@@ -111,7 +111,7 @@ cosign verify-blob \
   --certificate SHA256SUMS.pem \
   --signature SHA256SUMS.sig \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp 'github.com/linuskendall/zed-spaces-launcher' \
+  --certificate-identity-regexp 'github.com/linuskendall/cosmonaut' \
   SHA256SUMS
 
 # Then verify file integrity

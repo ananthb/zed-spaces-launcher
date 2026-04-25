@@ -18,11 +18,11 @@ CLI and menu bar applet for starting or creating GitHub Codespaces and opening t
 
 ```bash
 # Install with Nix
-nix profile install github:linuskendall/zed-spaces-launcher
+nix profile install github:linuskendall/cosmonaut
 
 # Or build from a git checkout
-git clone https://github.com/linuskendall/zed-spaces-launcher
-cd zed-spaces-launcher && go build -o cosmonaut .
+git clone https://github.com/linuskendall/cosmonaut
+cd cosmonaut && go build -o cosmonaut .
 
 # Run interactively
 cosmonaut

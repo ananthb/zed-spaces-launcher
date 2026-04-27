@@ -4,9 +4,19 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    # nix-appimage produces a real, portable AppImage by bundling the full
+    # closure into the squashfs and mounting it via user namespaces, so the
+    # binary's /nix/store interpreter and RUNPATH resolve at runtime on any
+    # Linux box. Replaces the previous hand-rolled AppRun that just exported
+    # LD_LIBRARY_PATH to host /nix/store paths.
+    nix-appimage = {
+      url = "github:ralismark/nix-appimage";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, nix-appimage }:
     {
       homeManagerModules.default = import ./modules/home-manager.nix self;
       homeManagerModules.cosmonaut = import ./modules/home-manager.nix self;
@@ -131,63 +141,11 @@
                 tar -czvf $out -C . cosmonaut
               '';
 
-          appimage =
-            let
-              pkg = cosmonaut;
-              arch = if system == "x86_64-linux" then "x86_64" else "aarch64";
-
-              appimageRuntime = pkgs.fetchurl (if system == "x86_64-linux" then {
-                url = "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64";
-                hash = "sha256-L8qLRDySUQ8Ug6iD9gBhrQm0a5eLJjHIB82HOkfsJg0=";
-              } else {
-                url = "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-aarch64";
-                hash = "sha256-AMvfz5F8xsD/bTNH1Z4Moff0Wm3xpCig1tinhmTYdEQ=";
-              });
-
-              libPath = pkgs.lib.makeLibraryPath (with pkgs; [
-                glib gtk3 libayatana-appindicator pango cairo gdk-pixbuf atk
-                harfbuzz fontconfig freetype
-                xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXi
-                xorg.libXext xorg.libXrender xorg.libXfixes
-                xorg.libXcomposite xorg.libXdamage xorg.libxcb
-                libxkbcommon wayland
-              ]);
-            in
-            pkgs.runCommand "cosmonaut-${arch}.AppImage"
-              { nativeBuildInputs = with pkgs; [ squashfsTools ]; }
-              ''
-                mkdir -p AppDir/usr/bin
-                mkdir -p AppDir/usr/share/applications
-
-                cp ${pkg}/bin/.cosmonaut-wrapped AppDir/usr/bin/cosmonaut
-                chmod +w AppDir/usr/bin/*
-
-                cat > AppDir/cosmonaut.desktop << 'DESKTOP'
-                [Desktop Entry]
-                Type=Application
-                Name=cosmonaut
-                Exec=cosmonaut applet
-                Icon=cosmonaut
-                Categories=Development;
-                DESKTOP
-                cp AppDir/cosmonaut.desktop AppDir/usr/share/applications/
-
-                cat > AppDir/AppRun << 'APPRUN'
-                #!/bin/bash
-                set -e
-                SELF=$(readlink -f "$0")
-                APPDIR=''${SELF%/*}
-                export LD_LIBRARY_PATH="LIBPATH:''${LD_LIBRARY_PATH}"
-                export PATH="''${APPDIR}/usr/bin:''${PATH}"
-                exec "''${APPDIR}/usr/bin/cosmonaut" "$@"
-                APPRUN
-                sed -i "s|LIBPATH|${libPath}|g" AppDir/AppRun
-                chmod +x AppDir/AppRun
-
-                mksquashfs AppDir appimage.squashfs -root-owned -noappend -comp zstd -quiet -no-progress
-                cat ${appimageRuntime} appimage.squashfs > $out
-                chmod +x $out
-              '';
+          appimage = nix-appimage.lib.${system}.mkAppImage {
+            program = "${cosmonaut}/bin/.cosmonaut-wrapped";
+            pname = "cosmonaut";
+            name = "cosmonaut-${if system == "x86_64-linux" then "x86_64" else "aarch64"}.AppImage";
+          };
         };
 
         # The Darwin DMG is assembled by .github/workflows/release.yml

@@ -37,12 +37,14 @@
 
           env.CGO_ENABLED = 1;
 
-          # netgo replaces the cgo DNS resolver with the pure-Go one. CGO is
-          # still on for Fyne (Cocoa/OpenGL via -framework, no dylib path
-          # embedding), but dropping the cgo resolver removes the libresolv
-          # link, which on darwin would otherwise bake a /nix/store dylib
-          # path into the Mach-O load commands and break the binary on
-          # non-Nix Macs.
+          # netgo selects the pure-Go DNS resolver. CGO stays on for Fyne
+          # (Cocoa/OpenGL via -framework, no dylib path embedding). On
+          # darwin this does NOT drop the libresolv dylib link — Go
+          # stdlib's internal/syscall/unix/net_darwin.go emits
+          # //go:cgo_ldflag "-lresolv" unconditionally, so the linker
+          # bakes nixpkgs's libresolv path into LC_LOAD_DYLIB regardless.
+          # The DMG build in .github/workflows/release.yml rewrites that
+          # load command to /usr/lib/libresolv.9.dylib via install_name_tool.
           tags = [ "netgo" ];
 
           nativeBuildInputs = [

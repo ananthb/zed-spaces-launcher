@@ -60,12 +60,32 @@ jobs:
           cp result/bin/.cosmonaut-wrapped dmg-staging/cosmonaut
           chmod +w dmg-staging/cosmonaut
 
-          # Sanity-check: the binary must not reference /nix/store dylibs, or
-          # dyld will abort on end-user Macs. The netgo build tag in flake.nix
-          # drops the cgo libresolv link that would otherwise embed such a path.
+          # Go stdlib's internal/syscall/unix/net_darwin.go has a
+          # //go:cgo_ldflag "-lresolv" that fires regardless of the netgo
+          # build tag, so the linker bakes nixpkgs's libresolv dylib path
+          # into LC_LOAD_DYLIB. Rewrite it to the macOS system path, which
+          # dyld resolves from the shared cache on every Mac.
+          nix_resolv=$(otool -L dmg-staging/cosmonaut \
+            | awk '/\/nix\/store.*libresolv/ {print $1; exit}')
+          if [ -n "$nix_resolv" ]; then
+            install_name_tool -change "$nix_resolv" \
+              /usr/lib/libresolv.9.dylib dmg-staging/cosmonaut
+          fi
+
+          # Sanity-check: no LC_LOAD_DYLIB or LC_RPATH may reference
+          # /nix/store after the rewrite, or dyld will abort on end-user
+          # Macs. (String-table references — Go's tzdata/mailcap/iana
+          # fallback paths — are runtime probes that fail open, so we
+          # don't gate on them.)
           if otool -L dmg-staging/cosmonaut | grep -q '/nix/store'; then
             echo "ERROR: binary references /nix/store dylibs:" >&2
             otool -L dmg-staging/cosmonaut | grep '/nix/store' >&2
+            exit 1
+          fi
+          if otool -l dmg-staging/cosmonaut | grep -A2 LC_RPATH \
+              | grep -q '/nix/store'; then
+            echo "ERROR: binary has /nix/store in LC_RPATH:" >&2
+            otool -l dmg-staging/cosmonaut | grep -A2 LC_RPATH >&2
             exit 1
           fi
 

@@ -27,6 +27,14 @@
 
           env.CGO_ENABLED = 1;
 
+          # netgo replaces the cgo DNS resolver with the pure-Go one. CGO is
+          # still on for Fyne (Cocoa/OpenGL via -framework, no dylib path
+          # embedding), but dropping the cgo resolver removes the libresolv
+          # link, which on darwin would otherwise bake a /nix/store dylib
+          # path into the Mach-O load commands and break the binary on
+          # non-Nix Macs.
+          tags = [ "netgo" ];
+
           nativeBuildInputs = [
             pkgs.makeWrapper
             pkgs.installShellFiles

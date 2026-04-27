@@ -59,6 +59,16 @@ jobs:
           mkdir -p dmg-staging
           cp result/bin/.cosmonaut-wrapped dmg-staging/cosmonaut
           chmod +w dmg-staging/cosmonaut
+
+          # Sanity-check: the binary must not reference /nix/store dylibs, or
+          # dyld will abort on end-user Macs. The netgo build tag in flake.nix
+          # drops the cgo libresolv link that would otherwise embed such a path.
+          if otool -L dmg-staging/cosmonaut | grep -q '/nix/store'; then
+            echo "ERROR: binary references /nix/store dylibs:" >&2
+            otool -L dmg-staging/cosmonaut | grep '/nix/store' >&2
+            exit 1
+          fi
+
           cp dist/cosmonaut.config.example.json dmg-staging/
           hdiutil create -volname "cosmonaut" -srcfolder dmg-staging \
             -ov -format UDZO dist-cosmonaut-macos-arm64.dmg

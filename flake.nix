@@ -30,7 +30,7 @@
 
         cosmonaut = pkgs.buildGoModule {
           pname = "cosmonaut";
-          version = "0.3.0";
+          version = "0.8.0";
           src = ./.;
 
           vendorHash = "sha256-Hc22uW6Eq1tY567WipjS8GCPWNJcT9Db5Wpovs/MAdU=";

@@ -1,4 +1,4 @@
-// Package config loads the codespace-zed JSONC configuration file
+// Package config loads the cosmonaut JSONC configuration file
 // and defines the Target struct that describes a named codespace target
 // (repository, branch, machine type, Zed display settings, etc.).
 package config
@@ -13,6 +13,7 @@ import (
 
 type Config struct {
 	DefaultTarget string            `json:"defaultTarget,omitempty"`
+	Editor        string            `json:"editor,omitempty"` // "zed" (default) or "neovim"
 	Targets       map[string]Target `json:"targets"`
 	Daemon        *DaemonConfig     `json:"daemon,omitempty"`
 }
@@ -23,6 +24,7 @@ type DaemonConfig struct {
 	HotkeyAction string `json:"hotkeyAction,omitempty"` // "picker" (default), "previous", or "default"
 	Terminal     string `json:"terminal,omitempty"`      // terminal app to launch picker in; "auto" to detect
 	PollInterval string `json:"pollInterval,omitempty"`  // how often to poll codespace state (e.g. "5m")
+	InhibitSleep string `json:"inhibitSleep,omitempty"` // "off" (default), "sleep", or "sleep+shutdown"
 }
 
 type Target struct {
@@ -76,6 +78,17 @@ func LoadConfig(path string) (*Config, error) {
 	return &cfg, nil
 }
 
+// SaveConfig writes the config to the given path as formatted JSON
+// with 4-space indentation for easy hand-editing.
+func SaveConfig(path string, cfg *Config) error {
+	data, err := json.MarshalIndent(cfg, "", "    ")
+	if err != nil {
+		return fmt.Errorf("marshaling config: %w", err)
+	}
+	data = append(data, '\n')
+	return os.WriteFile(path, data, 0644)
+}
+
 // FieldDoc describes a single config target field for generated documentation.
 type FieldDoc struct {
 	JSON     string // JSON key name
@@ -108,6 +121,7 @@ var DaemonFieldDocs = []FieldDoc{
 	{"hotkeyAction", "string", false, "Hotkey behavior: picker (default), previous, or default"},
 	{"terminal", "string", false, "Terminal app for picker; auto to detect"},
 	{"pollInterval", "string", false, "Codespace poll interval (e.g. 5m)"},
+	{"inhibitSleep", "string", false, "Hold sleep/shutdown inhibitor while a codespace session is active: off (default), sleep, or sleep+shutdown"},
 }
 
 // TargetFieldsHelp returns a formatted help string for all target fields.

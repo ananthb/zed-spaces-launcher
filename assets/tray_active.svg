@@ -1,6 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
-  <!-- Active: bold Z with filled connection dots. -->
-  <path d="M10 10 L34 10 L10 34 L34 34" fill="none" stroke="#000000" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="6" cy="22" r="2.5" fill="#000000"/>
-  <circle cx="38" cy="22" r="2.5" fill="#000000"/>
+  <!-- Cosmonaut active: helmet with visor slit + filled status dot -->
+  <path d="M 22 7 Q 35 7, 36 19 L 36 28 Q 36 36, 28 37 L 16 37 Q 8 36, 8 28 L 8 19 Q 9 7, 22 7 Z"
+        fill="none" stroke="#000000" stroke-width="2.8" stroke-linejoin="round"/>
+  <rect x="12" y="19" width="20" height="6" rx="2.5" fill="#000000"/>
+  <rect x="14" y="37" width="16" height="3" rx="1" fill="#000000"/>
+  <!-- Active dot -->
+  <circle cx="38" cy="8" r="4" fill="#000000"/>
 </svg>

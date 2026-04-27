@@ -13,17 +13,22 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          gc-max-store-size-linux: 5G
 
       - name: Build release tarball
         run: |
           nix build .#packages.x86_64-linux.release -o result-release
-          cp "$(readlink result-release)" dist-codespace-zed-amd64.tar.gz
+          cp "$(readlink result-release)" dist-cosmonaut-amd64.tar.gz
 
       - name: Build AppImage
         run: |
           nix build .#packages.x86_64-linux.appimage -o result-appimage
-          cp "$(readlink result-appimage)" dist-codespace-zed-amd64.AppImage
+          cp "$(readlink result-appimage)" dist-cosmonaut-amd64.AppImage
 
       - uses: actions/upload-artifact@v4
         with:
@@ -35,12 +40,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Build DMG
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          gc-max-store-size-macos: 3G
+
+      - name: Build package
+        run: nix build .#packages.aarch64-darwin.default -o result
+
+      - name: Create DMG
         run: |
-          nix build .#packages.aarch64-darwin.release -o result-dmg
-          cp "$(readlink result-dmg)" dist-codespace-zed-macos-arm64.dmg
+          # Ship the real Go binary (.cosmonaut-wrapped), not result/bin/cosmonaut,
+          # which is a nix shell wrapper that references /nix/store paths and will
+          # fail on end-user Macs. The Go binary's enrichPath() discovers gh via
+          # the user's login shell, so no wrapper is needed.
+          mkdir -p dmg-staging
+          cp result/bin/.cosmonaut-wrapped dmg-staging/cosmonaut
+          chmod +w dmg-staging/cosmonaut
+          cp dist/cosmonaut.config.example.json dmg-staging/
+          hdiutil create -volname "cosmonaut" -srcfolder dmg-staging \
+            -ov -format UDZO dist-cosmonaut-macos-arm64.dmg
 
       - uses: actions/upload-artifact@v4
         with:

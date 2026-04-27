@@ -3,13 +3,20 @@
 ## Requirements
 
 - [`gh`](https://cli.github.com/) installed and authenticated (`gh auth login`)
-- [`zed`](https://zed.dev) installed locally
+- [`zed`](https://zed.dev) (default) or `nvim` installed locally, matching the editor you plan to launch
 - GitHub Codespaces image includes an SSH server
     - For standard dev containers, use the [`ghcr.io/devcontainers/features/sshd:1`](https://github.com/devcontainers/features/tree/main/src/sshd) feature
 
 ## macOS
 
-Download the `.dmg` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases), open it, and drag **Codespace Zed.app** to Applications. Then double-click **Install CLI.command** in the DMG to symlink the `codespace-zed` CLI into `/usr/local/bin`.
+Download the `.dmg` from [GitHub Releases](https://github.com/linuskendall/cosmonaut/releases) and open it. The DMG contains the `cosmonaut` binary and an example config. Copy the binary somewhere on `PATH`:
+
+```bash
+sudo cp /Volumes/cosmonaut/cosmonaut /usr/local/bin/
+xattr -d com.apple.quarantine /usr/local/bin/cosmonaut
+```
+
+The `xattr` step clears the Gatekeeper quarantine flag that macOS applies to files pulled from a downloaded DMG.
 
 Available for: `aarch64` (Apple Silicon).
 
@@ -17,35 +24,35 @@ Available for: `aarch64` (Apple Silicon).
 
 ### AppImage
 
-Download the `.AppImage` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases):
+Download the `.AppImage` from [GitHub Releases](https://github.com/linuskendall/cosmonaut/releases):
 
 ```bash
-chmod +x codespace-zed-*.AppImage
-./codespace-zed-*.AppImage
+chmod +x cosmonaut-*.AppImage
+./cosmonaut-*.AppImage
 ```
 
-Available for: `amd64`, `arm64`.
+Available for: `amd64`.
 
 ### Tarball
 
-Download the `.tar.gz` from [GitHub Releases](https://github.com/linuskendall/zed-spaces-launcher/releases). Each tarball includes the binary, an example config, and a systemd user service file.
+Download the `.tar.gz` from [GitHub Releases](https://github.com/linuskendall/cosmonaut/releases). Each tarball includes the binary, an example config, and a systemd user service file.
 
 ```bash
-tar xzf codespace-zed-amd64.tar.gz
-sudo cp codespace-zed/codespace-zed /usr/local/bin/
+tar xzf cosmonaut-amd64.tar.gz
+sudo cp cosmonaut/cosmonaut /usr/local/bin/
 # Optional: install systemd user service
-cp codespace-zed/codespace-zed.service ~/.config/systemd/user/
-systemctl --user enable --now codespace-zed
+cp cosmonaut/cosmonaut.service ~/.config/systemd/user/
+systemctl --user enable --now cosmonaut
 ```
 
-Available for: `amd64`, `arm64`.
+Available for: `amd64`.
 
 ## Nix flake
 
 ```nix
 # flake.nix
 {
-  inputs.codespace-zed.url = "github:linuskendall/zed-spaces-launcher";
+  inputs.cosmonaut.url = "github:linuskendall/cosmonaut";
 }
 ```
 
@@ -55,9 +62,9 @@ The package includes shell completions for bash, zsh, and fish.
 
 ```nix
 {
-  imports = [ codespace-zed.homeManagerModules.default ];
+  imports = [ cosmonaut.homeManagerModules.default ];
 
-  programs.codespace-zed = {
+  programs.cosmonaut = {
     enable = true;
     defaultTarget = "work";
     targets.work = {
@@ -74,7 +81,9 @@ This generates the config file, wraps the binary with `--config`, sets up SSH in
 ## From source
 
 ```bash
-go install github.com/ananth/codespace-zed@latest
+git clone https://github.com/linuskendall/cosmonaut
+cd cosmonaut
+go build -o cosmonaut .
 ```
 
 Requires Go 1.26+ and CGo (for the Fyne GUI toolkit used by the applet).
@@ -87,11 +96,11 @@ All release artifacts are signed with [Sigstore cosign](https://docs.sigstore.de
 
 ```bash
 cosign verify-blob \
-  --certificate codespace-zed-amd64.tar.gz.pem \
-  --signature codespace-zed-amd64.tar.gz.sig \
+  --certificate cosmonaut-amd64.tar.gz.pem \
+  --signature cosmonaut-amd64.tar.gz.sig \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp 'github.com/linuskendall/zed-spaces-launcher' \
-  codespace-zed-amd64.tar.gz
+  --certificate-identity-regexp 'github.com/linuskendall/cosmonaut' \
+  cosmonaut-amd64.tar.gz
 ```
 
 ### Verify checksums
@@ -102,7 +111,7 @@ cosign verify-blob \
   --certificate SHA256SUMS.pem \
   --signature SHA256SUMS.sig \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp 'github.com/linuskendall/zed-spaces-launcher' \
+  --certificate-identity-regexp 'github.com/linuskendall/cosmonaut' \
   SHA256SUMS
 
 # Then verify file integrity

@@ -1,4 +1,4 @@
-// Package daemon implements the codespace-zed menu bar applet which
+// Package daemon implements the cosmonaut menu bar applet which
 // hosts a system tray icon, global hotkey listener, and codespace
 // lifecycle management.
 package daemon
@@ -12,8 +12,8 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/driver/desktop"
 
-	"github.com/ananth/codespace-zed/internal/codespace"
-	"github.com/ananth/codespace-zed/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/config"
 )
 
 // Daemon is the long-running background process that hosts the system tray,
@@ -28,15 +28,21 @@ type Daemon struct {
 	mu         sync.Mutex
 	codespaces []codespace.Codespace
 	stopCh     chan struct{}
+	sessions   *SessionTracker
 }
 
 // New creates a new Daemon with the given config.
 func New(cfg *config.Config, configPath string) *Daemon {
+	mode := "off"
+	if cfg != nil && cfg.Daemon != nil {
+		mode = cfg.Daemon.InhibitSleep
+	}
 	return &Daemon{
 		Cfg:        cfg,
 		ConfigPath: configPath,
 		Runner:     codespace.DefaultGHRunner{},
 		stopCh:     make(chan struct{}),
+		sessions:   newSessionTracker(mode),
 	}
 }
 
@@ -45,10 +51,15 @@ func New(cfg *config.Config, configPath string) *Daemon {
 func (d *Daemon) Run() error {
 	enrichPath()
 
-	d.app = app.NewWithID("dev.codespace-zed.applet")
+	d.app = app.NewWithID("dev.cosmonaut.applet")
+	d.app.Settings().SetTheme(newCosmoTheme())
 	d.app.SetIcon(appIcon())
 
 	log.Printf("applet started (pid %d)", os.Getpid())
+
+	// Run the initial poll synchronously so the tray menu has
+	// codespace data before it is first displayed.
+	d.poll()
 
 	// Start background workers.
 	go d.startPoller()
@@ -56,7 +67,7 @@ func (d *Daemon) Run() error {
 	d.startPreWarm()
 
 	// Create a hidden master window so popover windows don't quit the app on close.
-	master := d.app.NewWindow("codespace-zed-applet")
+	master := d.app.NewWindow("cosmonaut-applet")
 	master.SetMaster()
 	master.SetCloseIntercept(func() {})
 
@@ -79,6 +90,10 @@ func (d *Daemon) Stop() {
 		return
 	default:
 		close(d.stopCh)
+	}
+
+	if d.sessions != nil {
+		d.sessions.Stop()
 	}
 
 	if d.app != nil {

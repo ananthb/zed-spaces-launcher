@@ -8,7 +8,7 @@ import (
 
 	"golang.design/x/hotkey"
 
-	"github.com/ananth/codespace-zed/internal/history"
+	"github.com/linuskendall/cosmonaut/internal/history"
 )
 
 // defaultHotkey returns the platform default hotkey string.
@@ -66,15 +66,15 @@ func (d *Daemon) hotkeyAction() {
 	case "default":
 		if d.Cfg != nil && d.Cfg.DefaultTarget != "" {
 			if _, ok := d.Cfg.Targets[d.Cfg.DefaultTarget]; ok {
-				d.showPopover(d.Cfg.DefaultTarget)
+				d.showGUI(d.Cfg.DefaultTarget)
 				return
 			}
 		}
-		// No default target — fall through to picker.
-		d.showPopover()
+		// No default target: fall through to picker.
+		d.showGUI()
 
 	default: // "picker"
-		d.showPopover()
+		d.showGUI()
 	}
 }
 
@@ -85,15 +85,15 @@ func (d *Daemon) hotkeyActionPrevious() {
 	if len(hist.Entries) > 0 {
 		repo := hist.Entries[len(hist.Entries)-1].Repository
 		if name := d.targetNameForRepo(repo); name != "" {
-			d.showPopover(name)
+			d.showGUI(name)
 			return
 		}
-		// No config target — pass repo name directly so the child
+		// No config target: pass repo name directly so the child
 		// process can skip the repo selector TUI.
-		d.showPopover(repo)
+		d.showGUI(repo)
 		return
 	}
-	d.showPopover()
+	d.showGUI()
 }
 
 // parseHotkeyString converts a string like "Cmd+Shift+S" to hotkey modifiers and key.

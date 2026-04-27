@@ -16,8 +16,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/ananth/codespace-zed/internal/codespace"
-	"github.com/ananth/codespace-zed/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/config"
 )
 
 const numberTimeout = 500 * time.Millisecond
@@ -81,7 +81,7 @@ type RepoResult struct {
 }
 
 // RepoModel is the Bubbletea model for repository selection.
-// It supports filtering by typing — the list narrows as the user types,
+// It supports filtering by typing: the list narrows as the user types,
 // and if the filter matches no existing repo, a "use <filter>" option appears.
 type RepoModel struct {
 	allRepos    []string // full list (codespace repos, config repos, all user repos)
@@ -190,12 +190,12 @@ func (m RepoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "esc":
 			if m.escPending {
-				// Double esc — quit.
+				// Double esc: quit.
 				m.result.Quit = true
 				m.done = true
 				return m, tea.Quit
 			}
-			// Single esc — clear filter or start double-esc timer.
+			// Single esc: clear filter or start double-esc timer.
 			if m.filter != "" {
 				m.filter = ""
 				m.refilter()
@@ -228,7 +228,7 @@ func (m RepoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.refilter()
 			}
 		default:
-			// Single printable character — append to filter.
+			// Single printable character: append to filter.
 			if len(key) == 1 && key[0] >= 32 && key[0] < 127 {
 				m.filter += key
 				m.refilter()
@@ -295,7 +295,7 @@ func (m RepoModel) View() string {
 	}
 
 	if len(m.filtered) == 0 && !m.showUseAsIs() {
-		b.WriteString(dimStyle.Render("  no matches — type owner/repo to use directly"))
+		b.WriteString(dimStyle.Render("  no matches: type owner/repo to use directly"))
 		b.WriteString("\n")
 	}
 
@@ -392,7 +392,7 @@ func (m SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case escTimeoutMsg:
 		if msg.seq == m.escSeq {
 			m.escPending = false
-			// Single esc expired — go back if allowed.
+			// Single esc expired: go back if allowed.
 			if m.allowBack {
 				m.result.Back = true
 				m.done = true
@@ -432,7 +432,7 @@ func (m SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "esc":
 			if m.escPending {
-				// Double esc — always quit, even if allowBack.
+				// Double esc: always quit, even if allowBack.
 				m.result.Quit = true
 				m.done = true
 				return m, tea.Quit

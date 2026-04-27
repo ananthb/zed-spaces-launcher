@@ -7,21 +7,22 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/spf13/cobra"
 
-	"github.com/ananth/codespace-zed/internal/config"
-	"github.com/ananth/codespace-zed/internal/daemon"
+	"github.com/linuskendall/cosmonaut/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/daemon"
+	"github.com/linuskendall/cosmonaut/internal/migrate"
 )
 
 // appletConfigPath returns the default config path for the applet
 // using XDG base directories (works correctly on macOS and Linux).
 func appletConfigPath() string {
-	return filepath.Join(xdg.ConfigHome, "codespace-zed", "config.json")
+	return filepath.Join(xdg.ConfigHome, "cosmonaut", "config.json")
 }
 
 func appletCmd(configPath *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "applet",
 		Short: "Run the menu bar applet (tray icon, hotkey, codespace lifecycle)",
-		Long: `Start the codespace-zed applet with system tray icon, global hotkey,
+		Long: `Start the cosmonaut applet with system tray icon, global hotkey,
 and codespace lifecycle management.
 
 Daemon config fields (in "daemon" object):
@@ -33,6 +34,9 @@ Daemon config fields (in "daemon" object):
 }
 
 func runAppletStart(configPath *string) error {
+	// Migrate old codespace-zed paths to cosmonaut.
+	migrate.Run()
+
 	// If the user didn't explicitly set --config, prefer the XDG config path
 	// over the CWD-relative default (which makes no sense for a background applet).
 	path := *configPath

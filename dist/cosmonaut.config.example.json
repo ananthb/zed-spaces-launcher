@@ -8,7 +8,11 @@
     // What the hotkey does: "picker" (default), "previous", or "default"
     "hotkeyAction": "picker",
     "terminal": "auto",
-    "pollInterval": "5m"
+    "pollInterval": "5m",
+    // Hold a sleep inhibitor while a launched SSH session is alive.
+    // "off" (default), "sleep", or "sleep+shutdown" (Linux only; macOS
+    // treats sleep+shutdown as sleep).
+    "inhibitSleep": "off"
   },
 
   "targets": {

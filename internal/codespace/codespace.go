@@ -12,8 +12,9 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 
-	"github.com/ananth/codespace-zed/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/config"
 )
 
 // RepoField handles the gh CLI returning repository as either a string or an object.
@@ -52,6 +53,9 @@ type Codespace struct {
 	Repository  RepoField  `json:"repository"`
 	State       string     `json:"state,omitempty"`
 	GitStatus   *GitStatus `json:"gitStatus,omitempty"`
+	MachineName string     `json:"machineName,omitempty"`
+	CreatedAt   string     `json:"createdAt,omitempty"`
+	LastUsedAt  string     `json:"lastUsedAt,omitempty"`
 }
 
 // GHRunner abstracts the GitHub CLI for testability.
@@ -62,6 +66,9 @@ type GHRunner interface {
 	// both a capture buffer and the real terminal. Use this when the gh
 	// subprocess may need to prompt the user (e.g. machine-type selection).
 	RunInteractive(args []string) (string, error)
+	// RunWithInput runs a command and feeds a string to its stdin. Used for
+	// `gh api --input -` calls where we pipe a JSON body.
+	RunWithInput(args []string, input string) (string, error)
 }
 
 // DefaultGHRunner executes real gh commands.
@@ -105,6 +112,22 @@ func (d DefaultGHRunner) RunInteractive(args []string) (string, error) {
 	return buf.String(), nil
 }
 
+func (d DefaultGHRunner) RunWithInput(args []string, input string) (string, error) {
+	cmd := exec.Command("gh", args...)
+	cmd.Stdin = strings.NewReader(input)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		detail := strings.TrimSpace(stderr.String())
+		if detail == "" {
+			detail = strings.TrimSpace(stdout.String())
+		}
+		return "", fmt.Errorf("gh %s exited with code %d: %s", strings.Join(args, " "), cmd.ProcessState.ExitCode(), detail)
+	}
+	return stdout.String(), nil
+}
+
 // RequireCommand checks that a command is on PATH.
 func RequireCommand(name string) error {
 	_, err := exec.LookPath(name)
@@ -112,17 +135,6 @@ func RequireCommand(name string) error {
 		return fmt.Errorf("%q not found on PATH", name)
 	}
 	return nil
-}
-
-// FindZedBinary returns the path to the Zed editor CLI binary.
-// It checks "zed" first (Zed.app / Homebrew), then "zeditor" (nix).
-func FindZedBinary() (string, error) {
-	for _, name := range []string{"zed", "zeditor"} {
-		if p, err := exec.LookPath(name); err == nil {
-			return p, nil
-		}
-	}
-	return "", fmt.Errorf("Zed editor not found on PATH (tried \"zed\" and \"zeditor\")")
 }
 
 // EnsureGHAuth verifies the user is authenticated with gh.
@@ -139,7 +151,7 @@ func ListCodespaces(runner GHRunner, repository string) ([]Codespace, error) {
 	out, err := runner.Run([]string{
 		"codespace", "list",
 		"--repo", repository,
-		"--json", "name,displayName,repository,state,gitStatus",
+		"--json", "name,displayName,repository,state,gitStatus,machineName,createdAt,lastUsedAt",
 	})
 	if err != nil {
 		return nil, err
@@ -156,7 +168,7 @@ func ListCodespaces(runner GHRunner, repository string) ([]Codespace, error) {
 func ListAllCodespaces(runner GHRunner) ([]Codespace, error) {
 	out, err := runner.Run([]string{
 		"codespace", "list",
-		"--json", "name,displayName,repository,state,gitStatus",
+		"--json", "name,displayName,repository,state,gitStatus,machineName,createdAt,lastUsedAt",
 	})
 	if err != nil {
 		return nil, err
@@ -221,23 +233,45 @@ func FilterByRepo(codespaces []Codespace, repo string) []Codespace {
 
 var codespaceNameRe = regexp.MustCompile(`[A-Za-z0-9-]+-[A-Za-z0-9]{6,}`)
 
-// CreateCodespace creates a new codespace and returns its details.
+// CreateCodespace creates a new codespace by POSTing directly to the GitHub REST
+// API (`POST /repos/{owner}/{repo}/codespaces`). This bypasses the interactive
+// prompts that `gh codespace create` emits when billing is paid by a third
+// party or when a machine type isn't specified: prompts that fail without a
+// terminal (e.g. from the tray/daemon). Use CreateCodespaceInteractive when
+// running from a real TTY and prompts are desired.
 func CreateCodespace(runner GHRunner, target config.Target) (*Codespace, error) {
-	args := BuildCreateArgs(target)
-	combined, err := runner.RunMerged(args[1:]) // strip "gh" prefix
-	if err != nil && combined == "" {
+	owner, repoName, err := splitRepo(target.Repository)
+	if err != nil {
+		return nil, err
+	}
+	body, err := buildCreateAPIBody(target)
+	if err != nil {
 		return nil, err
 	}
 
-	match := codespaceNameRe.FindString(combined)
-	if match == "" {
-		return nil, fmt.Errorf("codespace created but name could not be determined from gh output:\n%s", strings.TrimSpace(combined))
+	apiOut, err := runner.RunWithInput([]string{
+		"api", "-X", "POST",
+		fmt.Sprintf("/repos/%s/%s/codespaces", owner, repoName),
+		"--input", "-",
+	}, string(body))
+	if err != nil {
+		return nil, err
+	}
+
+	var created struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal([]byte(apiOut), &created); err != nil {
+		return nil, fmt.Errorf("parsing codespace create response: %w\n%s", err, strings.TrimSpace(apiOut))
+	}
+	if created.Name == "" {
+		return nil, fmt.Errorf("codespace create response missing name:\n%s", strings.TrimSpace(apiOut))
 	}
 
 	out, err := runner.Run([]string{
 		"codespace", "view",
-		"--codespace", match,
-		"--json", "name,displayName,repository,state,gitStatus",
+		"--codespace", created.Name,
+		"--json", "name,displayName,repository,state,gitStatus,machineName,createdAt,lastUsedAt",
 	})
 	if err != nil {
 		return nil, err
@@ -248,6 +282,62 @@ func CreateCodespace(runner GHRunner, target config.Target) (*Codespace, error) 
 		return nil, fmt.Errorf("parsing codespace view: %w", err)
 	}
 	return &cs, nil
+}
+
+func splitRepo(repo string) (owner, name string, err error) {
+	parts := strings.SplitN(repo, "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", fmt.Errorf("invalid repository %q (expected owner/name)", repo)
+	}
+	return parts[0], parts[1], nil
+}
+
+// buildCreateAPIBody maps a config.Target to the JSON body accepted by
+// POST /repos/{owner}/{repo}/codespaces.
+func buildCreateAPIBody(target config.Target) ([]byte, error) {
+	body := map[string]any{}
+	if target.Branch != "" {
+		body["ref"] = target.Branch
+	}
+	if target.DisplayName != "" {
+		body["display_name"] = target.DisplayName
+	}
+	if target.Machine != "" {
+		body["machine"] = target.Machine
+	}
+	if target.Location != "" {
+		body["location"] = target.Location
+	}
+	if target.DevcontainerPath != "" {
+		body["devcontainer_path"] = target.DevcontainerPath
+	}
+	if target.IdleTimeout != "" {
+		mins, err := durationToMinutes(target.IdleTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("idleTimeout %q: %w", target.IdleTimeout, err)
+		}
+		body["idle_timeout_minutes"] = mins
+	}
+	if target.RetentionPeriod != "" {
+		mins, err := durationToMinutes(target.RetentionPeriod)
+		if err != nil {
+			return nil, fmt.Errorf("retentionPeriod %q: %w", target.RetentionPeriod, err)
+		}
+		body["retention_period_minutes"] = mins
+	}
+	return json.Marshal(body)
+}
+
+func durationToMinutes(s string) (int, error) {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, err
+	}
+	mins := int(d / time.Minute)
+	if mins <= 0 {
+		return 0, fmt.Errorf("must be at least 1 minute")
+	}
+	return mins, nil
 }
 
 // CreateCodespaceInteractive creates a codespace with terminal access so gh can
@@ -268,7 +358,7 @@ func CreateCodespaceInteractive(runner GHRunner, target config.Target) (*Codespa
 	out, err := runner.Run([]string{
 		"codespace", "view",
 		"--codespace", match,
-		"--json", "name,displayName,repository,state,gitStatus",
+		"--json", "name,displayName,repository,state,gitStatus,machineName,createdAt,lastUsedAt",
 	})
 	if err != nil {
 		return nil, err
@@ -288,15 +378,36 @@ func DeleteCodespace(runner GHRunner, name string) error {
 }
 
 // EnsureReachable verifies the codespace SSH server is accessible.
+// It retries with exponential backoff since the codespace may be
+// starting up or the SSH tunnel may be slow to establish.
 func EnsureReachable(runner GHRunner, codespaceName string) error {
-	_, err := runner.Run([]string{"codespace", "ssh", "--codespace", codespaceName, "--", "true"})
-	if err != nil {
-		return fmt.Errorf("could not start or SSH into codespace %q: %w", codespaceName, err)
+	var lastErr error
+	delays := []time.Duration{0, 2 * time.Second, 5 * time.Second, 10 * time.Second}
+	for i, delay := range delays {
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+		_, err := runner.Run([]string{"codespace", "ssh", "--codespace", codespaceName, "--", "true"})
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if i < len(delays)-1 {
+			// Log retry for debugging.
+			fmt.Fprintf(os.Stderr, "  SSH attempt %d failed, retrying...\n", i+1)
+		}
 	}
-	return nil
+	return fmt.Errorf("could not SSH into codespace %q after %d attempts: %w", codespaceName, len(delays), lastErr)
 }
 
 // GetSSHConfig retrieves the OpenSSH config for a codespace.
+// Retries once on failure since the SSH tunnel may not be ready immediately
+// after EnsureReachable succeeds.
 func GetSSHConfig(runner GHRunner, codespaceName string) (string, error) {
+	out, err := runner.Run([]string{"codespace", "ssh", "--codespace", codespaceName, "--config"})
+	if err == nil {
+		return out, nil
+	}
+	time.Sleep(2 * time.Second)
 	return runner.Run([]string{"codespace", "ssh", "--codespace", codespaceName, "--config"})
 }

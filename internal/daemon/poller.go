@@ -7,7 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 
-	"github.com/ananth/codespace-zed/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
 )
 
 func (d *Daemon) startPoller() {
@@ -18,7 +18,6 @@ func (d *Daemon) startPoller() {
 		}
 	}
 
-	d.poll() // initial poll
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -39,6 +38,8 @@ func (d *Daemon) poll() {
 		return
 	}
 
+	log.Printf("poll: fetched %d codespaces", len(codespaces))
+
 	old := d.Codespaces()
 	d.SetCodespaces(codespaces)
 
@@ -47,16 +48,19 @@ func (d *Daemon) poll() {
 	}
 	d.checkAutoStop(codespaces)
 	d.updateTrayIcon(codespaces)
+	d.rebuildTrayMenu()
 }
 
-// updateTrayIcon switches between idle (hollow) and active (filled) icons
-// based on whether any codespaces are running.
+// updateTrayIcon switches tray icon based on aggregate codespace state.
 func (d *Daemon) updateTrayIcon(codespaces []codespace.Codespace) {
-	hasActive := false
+	hasAvailable := false
+	hasStarting := false
 	for _, cs := range codespaces {
-		if cs.State == "Available" || cs.State == "Starting" {
-			hasActive = true
-			break
+		switch cs.State {
+		case "Available":
+			hasAvailable = true
+		case "Starting":
+			hasStarting = true
 		}
 	}
 
@@ -65,9 +69,12 @@ func (d *Daemon) updateTrayIcon(codespaces []codespace.Codespace) {
 		if !ok {
 			return
 		}
-		if hasActive {
+		switch {
+		case hasStarting:
+			desk.SetSystemTrayIcon(trayIconStarting())
+		case hasAvailable:
 			desk.SetSystemTrayIcon(trayIconActive())
-		} else {
+		default:
 			desk.SetSystemTrayIcon(trayIconIdle())
 		}
 	})

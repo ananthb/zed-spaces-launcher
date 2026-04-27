@@ -1,20 +1,19 @@
-// codespace-zed starts or creates GitHub Codespaces and opens them in Zed
-// via SSH remoting.
+// cosmonaut starts or creates GitHub Codespaces and opens them in your
+// editor (Zed or Neovim) via SSH remoting.
 //
 // The tool performs the following steps:
 //  1. Authenticate with GitHub via the gh CLI
 //  2. Resolve a target repository and codespace (interactive or from config)
 //  3. Create a codespace if no match exists
-//  4. Fetch the codespace's SSH config and write it to ~/.ssh/codespaces-zed/
-//  5. Upsert a remote connection in Zed's settings.json
-//  6. Launch Zed with the ssh:// remote URL
+//  4. Fetch the codespace's SSH config and write it to ~/.ssh/cosmonaut/
+//  5. Configure editor-specific settings (e.g. Zed's settings.json)
+//  6. Launch the editor with the SSH remote connection
 package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -23,16 +22,16 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/ananth/codespace-zed/internal/codespace"
-	"github.com/ananth/codespace-zed/internal/config"
-	"github.com/ananth/codespace-zed/internal/history"
-	"github.com/ananth/codespace-zed/internal/slug"
-	"github.com/ananth/codespace-zed/internal/sshconfig"
-	"github.com/ananth/codespace-zed/internal/tui"
-	"github.com/ananth/codespace-zed/internal/zed"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/editor"
+	"github.com/linuskendall/cosmonaut/internal/history"
+	"github.com/linuskendall/cosmonaut/internal/slug"
+	"github.com/linuskendall/cosmonaut/internal/sshconfig"
+	"github.com/linuskendall/cosmonaut/internal/tui"
 )
 
-const defaultConfigPath = "codespace-zed.config.json"
+const defaultConfigPath = "cosmonaut.config.json"
 
 func main() {
 	// When launched from a macOS .app bundle (double-click, Dock, Spotlight),
@@ -63,15 +62,17 @@ func isAppBundle() bool {
 
 func rootCmd() *cobra.Command {
 	var (
-		configPath string
-		noOpen     bool
-		dryRun     bool
+		configPath    string
+		noOpen        bool
+		dryRun        bool
+		codespaceName string
+		editorFlag    string
 	)
 
 	cmd := &cobra.Command{
-		Use:   "codespace-zed [target]",
-		Short: "Start or create GitHub Codespaces and open them in Zed",
-		Long: `codespace-zed connects GitHub Codespaces to Zed via SSH remoting.
+		Use:   "cosmonaut [target]",
+		Short: "Start or create GitHub Codespaces and open them in your editor",
+		Long: `cosmonaut connects GitHub Codespaces to your editor via SSH remoting.
 
 When a target name is given, its definition is read from the config file.
 Without a target, an interactive TUI lets you pick a repository (with
@@ -89,13 +90,15 @@ Config file fields:
 			if len(args) > 0 {
 				targetName = args[0]
 			}
-			return run(configPath, targetName, noOpen, dryRun)
+			return run(configPath, targetName, codespaceName, editorFlag, noOpen, dryRun)
 		},
 	}
 
 	cmd.PersistentFlags().StringVar(&configPath, "config", defaultConfigPath, "path to config file")
 	cmd.Flags().BoolVar(&noOpen, "no-open", false, "update SSH/Zed config and print target without launching Zed")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "do not create codespace or launch Zed")
+	cmd.Flags().StringVar(&codespaceName, "codespace", "", "launch a specific codespace by name (skip selection)")
+	cmd.Flags().StringVar(&editorFlag, "editor", "", "editor to use: zed (default) or neovim")
 
 	_ = cmd.RegisterFlagCompletionFunc("config", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return nil, cobra.ShellCompDirectiveFilterFileExt
@@ -132,7 +135,7 @@ func completeTargets(configPath *string) func(*cobra.Command, []string, string) 
 	}
 }
 
-func run(configPath, targetName string, noOpen, dryRun bool) error {
+func run(configPath, targetName, codespaceName, editorFlag string, noOpen, dryRun bool) error {
 	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
 		return err
@@ -193,7 +196,30 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 		return fmt.Errorf("no target was provided and config.defaultTarget is not set")
 	}
 
-	if dynamicMode {
+	// Direct codespace launch: bypass all TUI selection.
+	if codespaceName != "" {
+		if target.Repository == "" {
+			return fmt.Errorf("--codespace requires a target or repo argument to resolve workspace settings")
+		}
+		// Fetch full codespace details so we have state for the fast path.
+		out, csErr := runner.Run([]string{
+			"codespace", "view",
+			"--codespace", codespaceName,
+			"--json", "name,displayName,repository,state,gitStatus,machineName,createdAt,lastUsedAt",
+		})
+		if csErr != nil {
+			return fmt.Errorf("looking up codespace %q: %w", codespaceName, csErr)
+		}
+		var cs codespace.Codespace
+		if csErr := json.Unmarshal([]byte(out), &cs); csErr != nil {
+			return fmt.Errorf("parsing codespace %q: %w", codespaceName, csErr)
+		}
+		selected = &cs
+	}
+
+	if selected != nil {
+		// Already resolved (e.g. --codespace flag); skip selection.
+	} else if dynamicMode {
 		// Fetch all codespaces and all user repos for the repo picker.
 		var allCodespaces []codespace.Codespace
 		var allUserRepos []string
@@ -229,7 +255,7 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 			repoCodespaces := codespace.FilterByRepo(allCodespaces, repo)
 
 			if len(repoCodespaces) == 0 {
-				// No existing codespaces — skip selection, go straight to creation.
+				// No existing codespaces: skip selection, go straight to creation.
 				selected = nil
 				break
 			}
@@ -251,7 +277,7 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 				sorted = hist.SortRepos(repos)
 				recentCount = countRecent(sorted, hist)
 				if len(repos) == 0 {
-					return fmt.Errorf("no codespaces remain — create one with `gh codespace create` first")
+					return fmt.Errorf("no codespaces remain: create one with `gh codespace create` first")
 				}
 				continue
 			}
@@ -259,7 +285,7 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 			break
 		}
 	} else {
-		// Static target — list codespaces for the specific repo.
+		// Static target: list codespaces for the specific repo.
 		// When using a default target interactively (no explicit target name),
 		// allow the user to go back to pick a different repo.
 		allowBack := interactive && targetName == ""
@@ -331,7 +357,7 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 				}
 			}
 		} else if allowBack {
-			// No codespaces for default target — let user pick another repo.
+			// No codespaces for default target: let user pick another repo.
 			wentBack = true
 		}
 
@@ -390,7 +416,7 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 					sorted = hist.SortRepos(repos)
 					recentCount = countRecent(sorted, hist)
 					if len(repos) == 0 {
-						return fmt.Errorf("no codespaces remain — create one with `gh codespace create` first")
+						return fmt.Errorf("no codespaces remain: create one with `gh codespace create` first")
 					}
 					continue
 				}
@@ -446,26 +472,30 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 	hist.Touch(target.Repository)
 	hist.Save()
 
+	// Resolve the editor to use (CLI flag overrides config).
+	editorName := editorFlag
+	if editorName == "" && cfg != nil {
+		editorName = cfg.Editor
+	}
+	ed, err := editor.ForName(editorName)
+	if err != nil {
+		return err
+	}
+
 	// Fast path: if the codespace is already Available and we have an
 	// SSH config on disk, skip the slow SSH wait + config fetch and
-	// go straight to launching Zed (which will focus an existing window
-	// if already connected).
+	// go straight to launching the editor.
 	if selected.State == "Available" {
 		paths := sshconfig.ResolvePaths()
 		if alias, ok := sshconfig.ReadExistingAlias(paths.IncludeDir, selected.Name); ok {
-			remoteURL := fmt.Sprintf("ssh://%s/%s", alias, strings.TrimLeft(target.WorkspacePath, "/"))
 			if interactive {
-				tui.Status("⚡", "Codespace already running, opening Zed")
+				tui.Status("⚡", fmt.Sprintf("Codespace already running, opening %s", ed.Name()))
 			}
 			if !dryRun && !noOpen {
-				zedBin, err := codespace.FindZedBinary()
-				if err != nil {
-					return err
-				}
-				cmd := exec.Command(zedBin, remoteURL)
-				return cmd.Run()
+				return ed.LaunchRemote(alias, target.WorkspacePath)
 			}
 			if dryRun || noOpen {
+				remoteURL := fmt.Sprintf("ssh://%s/%s", alias, strings.TrimLeft(target.WorkspacePath, "/"))
 				output := map[string]string{
 					"target":    resolvedTargetName,
 					"codespace": selected.Name,
@@ -522,56 +552,44 @@ func run(configPath, targetName string, noOpen, dryRun bool) error {
 		return err
 	}
 
-	// Update Zed settings.
-	nickname := zed.ResolveNickname(
+	// Configure editor-specific settings (e.g. Zed's settings.json).
+	nickname := editor.ResolveNickname(
 		target.ZedNickname,
 		target.DisplayName,
 		selected.DisplayName,
 		resolvedTargetName,
 	)
-	conn := zed.BuildConnection(sshAlias, target.WorkspacePath, nickname, target.UploadBinaryOverSSH)
-	settingsPath := zed.ResolveSettingsPath()
-	if err := zed.UpsertConnectionInFile(settingsPath, conn); err != nil {
+	if err := ed.ConfigureConnection(sshAlias, target.WorkspacePath, nickname, target.UploadBinaryOverSSH); err != nil {
 		return err
 	}
 
 	if interactive {
-		tui.Status("✓", "SSH and Zed config updated")
+		tui.Status("✓", "SSH and editor config updated")
 	}
 
-	remoteURL := fmt.Sprintf("ssh://%s/%s", sshAlias, strings.TrimLeft(target.WorkspacePath, "/"))
-
 	if dryRun || noOpen {
+		remoteURL := fmt.Sprintf("ssh://%s/%s", sshAlias, strings.TrimLeft(target.WorkspacePath, "/"))
 		output := map[string]string{
-			"target":          resolvedTargetName,
-			"codespace":       selected.Name,
-			"sshAlias":        sshAlias,
-			"remoteUrl":       remoteURL,
-			"zedSettingsPath": settingsPath,
+			"target":    resolvedTargetName,
+			"codespace": selected.Name,
+			"sshAlias":  sshAlias,
+			"remoteUrl": remoteURL,
+			"editor":    ed.Name(),
 		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(output)
 	}
 
-	// Launch Zed.
-	zedBin, err := codespace.FindZedBinary()
-	if err != nil {
-		return err
-	}
+	// Launch editor.
 	if interactive {
-		if err := tui.RunWithSpinner("Launching Zed", func() error {
-			cmd := exec.Command(zedBin, remoteURL)
-			return cmd.Run()
+		if err := tui.RunWithSpinner(fmt.Sprintf("Launching %s", ed.Name()), func() error {
+			return ed.LaunchRemote(sshAlias, target.WorkspacePath)
 		}); err != nil {
 			return err
 		}
 	} else {
-		cmd := exec.Command(zedBin, remoteURL)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
+		if err := ed.LaunchRemote(sshAlias, target.WorkspacePath); err != nil {
 			return err
 		}
 	}

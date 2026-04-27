@@ -2,4 +2,4 @@
 
 # tui
 
-Run `gomarkdoc ./internal/tui/` to generate, or see the [CI workflow](https://github.com/linuskendall/zed-spaces-launcher/actions/workflows/docs.yml).
+Run `gomarkdoc ./internal/tui/` to generate, or see the [CI workflow](https://github.com/linuskendall/cosmonaut/actions/workflows/docs.yml).

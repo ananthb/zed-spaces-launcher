@@ -1,6 +1,6 @@
 // Package sshconfig manages the local SSH configuration for codespace
 // connections. It writes per-codespace config files into
-// ~/.ssh/codespaces-zed/ and ensures the main ~/.ssh/config includes them.
+// ~/.ssh/cosmonaut/ and ensures the main ~/.ssh/config includes them.
 package sshconfig
 
 import (
@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const SSHIncludeLine = "Include ~/.ssh/codespaces-zed/*.conf"
+const SSHIncludeLine = "Include ~/.ssh/cosmonaut/*.conf"
 
 var hostAliasRe = regexp.MustCompile(`(?m)^\s*Host\s+([^\s*][^\s]*)\s*$`)
 
@@ -52,7 +52,7 @@ func ResolvePaths() SSHPaths {
 	sshDir := filepath.Join(home, ".ssh")
 	return SSHPaths{
 		MainConfigPath: filepath.Join(sshDir, "config"),
-		IncludeDir:     filepath.Join(sshDir, "codespaces-zed"),
+		IncludeDir:     filepath.Join(sshDir, "cosmonaut"),
 	}
 }
 
@@ -97,10 +97,24 @@ func ReadExistingAlias(includeDir, codespaceName string) (string, bool) {
 	return alias, true
 }
 
-// WriteCodespaceConfig writes the SSH config for a specific codespace.
+// sshKeepAlive is appended to every codespace SSH config for connection
+// reliability. ServerAliveInterval pings the server every 15s,
+// ServerAliveCountMax drops after 3 missed pongs (45s timeout), and
+// ConnectionAttempts retries the initial connection up to 3 times.
+const sshKeepAlive = `  ServerAliveInterval 15
+  ServerAliveCountMax 3
+  ConnectionAttempts 3
+`
+
+// WriteCodespaceConfig writes the SSH config for a specific codespace,
+// appending keepalive options for connection reliability.
 func WriteCodespaceConfig(includeDir, codespaceName, content string) error {
 	if err := os.MkdirAll(includeDir, 0700); err != nil {
 		return err
+	}
+	// Append keepalive options if not already present.
+	if !strings.Contains(content, "ServerAliveInterval") {
+		content = strings.TrimRight(content, "\n") + "\n" + sshKeepAlive
 	}
 	path := filepath.Join(includeDir, codespaceName+".conf")
 	return os.WriteFile(path, []byte(content), 0644)

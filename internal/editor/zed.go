@@ -1,33 +1,60 @@
-// Package zed reads and updates Zed's settings.json to upsert SSH
-// remote connections. It preserves comments and formatting by operating
-// on the parsed JSONC structure.
-package zed
+package editor
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"runtime"
-
 	"regexp"
+	"runtime"
+	"strings"
 )
 
-type Project struct {
+// ZedEditor implements Editor for the Zed text editor.
+type ZedEditor struct{}
+
+func (z *ZedEditor) Name() string { return "zed" }
+
+func (z *ZedEditor) FindBinary() (string, error) {
+	for _, name := range []string{"zed", "zeditor"} {
+		if p, err := exec.LookPath(name); err == nil {
+			return p, nil
+		}
+	}
+	return "", fmt.Errorf("Zed editor not found on PATH (tried \"zed\" and \"zeditor\")")
+}
+
+func (z *ZedEditor) ConfigureConnection(sshAlias, workspacePath, nickname string, uploadBinary *bool) error {
+	conn := buildConnection(sshAlias, workspacePath, nickname, uploadBinary)
+	return upsertConnectionInFile(resolveSettingsPath(), conn)
+}
+
+func (z *ZedEditor) LaunchRemote(sshAlias, workspacePath string) error {
+	bin, err := z.FindBinary()
+	if err != nil {
+		return err
+	}
+	remoteURL := fmt.Sprintf("ssh://%s/%s", sshAlias, strings.TrimLeft(workspacePath, "/"))
+	return exec.Command(bin, remoteURL).Run()
+}
+
+// --- Zed settings.json manipulation (moved from internal/zed/) ---
+
+type project struct {
 	Paths []string `json:"paths"`
 }
 
-type SSHConnection struct {
+type sshConnection struct {
 	Host                string    `json:"host"`
 	Nickname            string    `json:"nickname,omitempty"`
-	Projects            []Project `json:"projects,omitempty"`
+	Projects            []project `json:"projects,omitempty"`
 	UploadBinaryOverSSH *bool     `json:"upload_binary_over_ssh,omitempty"`
 	Port                int       `json:"port,omitempty"`
 	Username            string    `json:"username,omitempty"`
 }
 
-// ResolveSettingsPath returns the Zed settings.json path for the current platform.
-func ResolveSettingsPath() string {
+func resolveSettingsPath() string {
 	home, _ := os.UserHomeDir()
 	if runtime.GOOS == "darwin" {
 		return filepath.Join(home, ".zed", "settings.json")
@@ -35,12 +62,11 @@ func ResolveSettingsPath() string {
 	return filepath.Join(home, ".config", "zed", "settings.json")
 }
 
-// BuildConnection creates an SSHConnection from target config and SSH alias.
-func BuildConnection(host, workspacePath, nickname string, uploadBinary *bool) SSHConnection {
-	conn := SSHConnection{
+func buildConnection(host, workspacePath, nickname string, uploadBinary *bool) sshConnection {
+	conn := sshConnection{
 		Host:     host,
 		Nickname: nickname,
-		Projects: []Project{{Paths: []string{workspacePath}}},
+		Projects: []project{{Paths: []string{workspacePath}}},
 	}
 	if uploadBinary != nil {
 		conn.UploadBinaryOverSSH = uploadBinary
@@ -48,22 +74,6 @@ func BuildConnection(host, workspacePath, nickname string, uploadBinary *bool) S
 	return conn
 }
 
-// ResolveNickname determines the nickname for a Zed connection.
-// It checks zedNickname, targetDisplayName, codespaceDisplayName, then targetName.
-func ResolveNickname(zedNickname, targetDisplayName, codespaceDisplayName, targetName string) string {
-	if zedNickname != "" {
-		return zedNickname
-	}
-	if targetDisplayName != "" {
-		return targetDisplayName
-	}
-	if codespaceDisplayName != "" {
-		return codespaceDisplayName
-	}
-	return targetName
-}
-
-// connectionIdentity returns a comparable identity string for matching connections.
 func connectionIdentity(conn map[string]any) string {
 	host, _ := conn["host"].(string)
 	username, _ := conn["username"].(string)
@@ -74,8 +84,7 @@ func connectionIdentity(conn map[string]any) string {
 	return fmt.Sprintf("%s@%s:%d", username, host, port)
 }
 
-// UpsertConnection merges a new SSH connection into the settings map.
-func UpsertConnection(settings map[string]any, conn SSHConnection) map[string]any {
+func upsertConnection(settings map[string]any, conn sshConnection) map[string]any {
 	result := make(map[string]any, len(settings))
 	for k, v := range settings {
 		result[k] = v
@@ -118,8 +127,7 @@ func UpsertConnection(settings map[string]any, conn SSHConnection) map[string]an
 	return result
 }
 
-// UpsertConnectionInFile reads, updates, and writes the Zed settings file.
-func UpsertConnectionInFile(settingsPath string, conn SSHConnection) error {
+func upsertConnectionInFile(settingsPath string, conn sshConnection) error {
 	current := make(map[string]any)
 
 	data, err := os.ReadFile(settingsPath)
@@ -127,9 +135,7 @@ func UpsertConnectionInFile(settingsPath string, conn SSHConnection) error {
 		return err
 	}
 	if len(data) > 0 {
-		// Parse JSONC (Zed settings may have comments)
 		if err := json.Unmarshal(data, &current); err != nil {
-			// Try stripping comments with a simple approach
 			clean := stripJSONComments(string(data))
 			if err := json.Unmarshal([]byte(clean), &current); err != nil {
 				return fmt.Errorf("parsing %s: %w", settingsPath, err)
@@ -137,7 +143,7 @@ func UpsertConnectionInFile(settingsPath string, conn SSHConnection) error {
 		}
 	}
 
-	updated := UpsertConnection(current, conn)
+	updated := upsertConnection(current, conn)
 
 	dir := filepath.Dir(settingsPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {

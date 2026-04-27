@@ -2,7 +2,7 @@ flake:
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.programs.codespace-zed;
+  cfg = config.programs.cosmonaut;
 
   repoName = repository: builtins.elemAt (lib.splitString "/" repository) 1;
 
@@ -97,6 +97,7 @@ let
 
   configJSON = builtins.toJSON (filterNulls {
     defaultTarget = cfg.defaultTarget;
+    editor = cfg.editor;
     targets = lib.mapAttrs (_: target: filterNulls {
       inherit (target)
         repository branch displayName codespaceName workspacePath
@@ -108,35 +109,42 @@ let
       hotkeyAction = cfg.daemon.hotkeyAction;
       terminal = cfg.daemon.terminal;
       pollInterval = cfg.daemon.pollInterval;
+      inhibitSleep = cfg.daemon.inhibitSleep;
     });
   });
 
-  configFile = pkgs.writeText "codespace-zed-config.json" configJSON;
+  configFile = pkgs.writeText "cosmonaut-config.json" configJSON;
 
   wrappedPackage = pkgs.symlinkJoin {
-    name = "codespace-zed-wrapped";
+    name = "cosmonaut-wrapped";
     paths = [ cfg.package ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
-      wrapProgram $out/bin/codespace-zed \
+      wrapProgram $out/bin/cosmonaut \
         --add-flags "--config ${configFile}"
     '';
   };
 in
 {
-  options.programs.codespace-zed = {
-    enable = lib.mkEnableOption "codespace-zed launcher";
+  options.programs.cosmonaut = {
+    enable = lib.mkEnableOption "cosmonaut launcher";
 
     package = lib.mkOption {
       type = lib.types.package;
       default = flake.packages.${pkgs.stdenv.hostPlatform.system}.default;
-      description = "The codespace-zed package to use.";
+      description = "The cosmonaut package to use.";
     };
 
     defaultTarget = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
       description = "Default target name when none is specified on the command line.";
+    };
+
+    editor = lib.mkOption {
+      type = lib.types.nullOr (lib.types.enum [ "zed" "neovim" ]);
+      default = null;
+      description = "Editor to use for opening codespaces (zed or neovim). Defaults to zed.";
     };
 
     targets = lib.mkOption {
@@ -149,7 +157,7 @@ in
       enable = lib.mkOption {
         type = lib.types.bool;
         default = true;
-        description = "Whether to enable the codespace-zed background daemon (tray, hotkey, lifecycle).";
+        description = "Whether to enable the cosmonaut background daemon (tray, hotkey, lifecycle).";
       };
 
       hotkey = lib.mkOption {
@@ -180,24 +188,36 @@ in
         default = "5m";
         description = "Interval for polling codespace states.";
       };
+
+      inhibitSleep = lib.mkOption {
+        type = lib.types.enum [ "off" "sleep" "sleep+shutdown" ];
+        default = "off";
+        description = ''
+          Hold a sleep/shutdown inhibitor while a codespace session is active:
+          - "off" (default): never inhibit
+          - "sleep": inhibit idle sleep while any launched SSH session is alive
+          - "sleep+shutdown": also inhibit shutdown (Linux only; on macOS this
+            degrades to "sleep" because there is no user-space shutdown inhibitor)
+        '';
+      };
     };
   };
 
   config = lib.mkIf cfg.enable {
     home.packages = [ wrappedPackage ];
 
-    programs.ssh.includes = [ "~/.ssh/codespaces-zed/*.conf" ];
+    programs.ssh.includes = [ "~/.ssh/cosmonaut/*.conf" ];
 
-    home.file.".ssh/codespaces-zed/.keep".text = "";
+    home.file.".ssh/cosmonaut/.keep".text = "";
 
     # Copy .app bundle into ~/Applications on activation.
     # home.file with recursive=true creates per-file symlinks which macOS
     # does not recognise as a valid bundle. Instead, copy the whole .app
     # directory and strip the quarantine xattr so Gatekeeper accepts it.
-    home.activation.codespace-zed-app = lib.mkIf pkgs.stdenv.isDarwin
+    home.activation.cosmonaut-app = lib.mkIf pkgs.stdenv.isDarwin
       (lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-        app_src="${wrappedPackage}/Applications/Codespace Zed.app"
-        app_dst="$HOME/Applications/Codespace Zed.app"
+        app_src="${wrappedPackage}/Applications/Cosmonaut.app"
+        app_dst="$HOME/Applications/Cosmonaut.app"
         $DRY_RUN_CMD rm -rf "$app_dst"
         $DRY_RUN_CMD cp -RL "$app_src" "$app_dst"
         $DRY_RUN_CMD chmod -R u+w "$app_dst"
@@ -205,38 +225,38 @@ in
       '');
 
     # macOS launchd agent for the daemon.
-    launchd.agents.codespace-zed-daemon = lib.mkIf (cfg.daemon.enable && pkgs.stdenv.isDarwin) {
+    launchd.agents.cosmonaut-daemon = lib.mkIf (cfg.daemon.enable && pkgs.stdenv.isDarwin) {
       enable = true;
       config = {
         # Launch from the .app bundle so macOS associates the process
         # with the bundle (dock icon, app lifecycle, permissions).
-        # The .app binary only has the gh PATH wrapper — it doesn't
+        # The .app binary only has the gh PATH wrapper: it doesn't
         # include the home-manager --config wrapper, so pass it here.
         ProgramArguments = [
-          "${wrappedPackage}/Applications/Codespace Zed.app/Contents/MacOS/codespace-zed"
+          "${wrappedPackage}/Applications/Cosmonaut.app/Contents/MacOS/cosmonaut"
           "--config" "${configFile}"
           "applet"
         ];
-        # Only restart on abnormal exit — lets the user quit cleanly
+        # Only restart on abnormal exit: lets the user quit cleanly
         # via the tray menu without launchd immediately restarting.
         KeepAlive = { SuccessfulExit = false; };
         RunAtLoad = true;
-        Label = "com.codespace-zed.daemon";
-        StandardOutPath = "${config.home.homeDirectory}/Library/Logs/codespace-zed.log";
-        StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/codespace-zed.log";
+        Label = "com.cosmonaut.daemon";
+        StandardOutPath = "${config.home.homeDirectory}/Library/Logs/cosmonaut.log";
+        StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/cosmonaut.log";
         ProcessType = "Interactive";
       };
     };
 
     # Linux systemd user service for the daemon.
-    systemd.user.services.codespace-zed-daemon = lib.mkIf (cfg.daemon.enable && pkgs.stdenv.isLinux) {
+    systemd.user.services.cosmonaut-daemon = lib.mkIf (cfg.daemon.enable && pkgs.stdenv.isLinux) {
       Unit = {
-        Description = "codespace-zed background daemon";
+        Description = "cosmonaut background daemon";
         After = [ "graphical-session.target" ];
         PartOf = [ "graphical-session.target" ];
       };
       Service = {
-        ExecStart = "${wrappedPackage}/bin/codespace-zed daemon start";
+        ExecStart = "${wrappedPackage}/bin/cosmonaut applet";
         Restart = "on-failure";
         RestartSec = 5;
       };

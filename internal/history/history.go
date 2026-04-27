@@ -1,6 +1,6 @@
 // Package history tracks recently used repositories so the interactive
 // repo picker can sort them by recency. The history is stored as JSON
-// in ~/.config/codespace-zed/history.json.
+// in ~/.config/cosmonaut/history.json.
 package history
 
 import (
@@ -25,7 +25,7 @@ type History struct {
 }
 
 func defaultPath() string {
-	return filepath.Join(xdg.StateHome, "codespace-zed", "history.json")
+	return filepath.Join(xdg.StateHome, "cosmonaut", "history.json")
 }
 
 // Load reads the history file. Returns empty history if missing.

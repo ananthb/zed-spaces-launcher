@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ananth/codespace-zed/internal/codespace"
-	"github.com/ananth/codespace-zed/internal/config"
+	"github.com/linuskendall/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/config"
 )
 
 // checkAutoStop stops codespaces that have been idle past their configured autoStop duration.
@@ -112,10 +112,10 @@ func nextOccurrence(tod timeOfDay) time.Time {
 func sendNotification(msg string) {
 	switch runtime.GOOS {
 	case "darwin":
-		script := fmt.Sprintf(`display notification %q with title "codespace-zed"`, msg)
+		script := fmt.Sprintf(`display notification %q with title "cosmonaut"`, msg)
 		exec.Command("osascript", "-e", script).Run()
 	case "linux":
-		exec.Command("notify-send", "codespace-zed", msg).Run()
+		exec.Command("notify-send", "cosmonaut", msg).Run()
 	}
 }
 

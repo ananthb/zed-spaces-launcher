@@ -6,6 +6,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
@@ -81,22 +82,49 @@ func (d *Daemon) buildAuthSection(win fyne.Window) fyne.CanvasObject {
 	}
 	statusLabel := widget.NewLabel(statusText)
 
+	// After an auth-state change, the section's button label and the tray
+	// menu both need to reflect the new state. Rebuilding the whole settings
+	// panel is the simplest correct refresh: the panel is small, all sections
+	// re-read their state on construction, and there's no other live state
+	// in the window worth preserving across an auth flip.
+	refresh := func() {
+		d.rebuildTrayMenu()
+		if win != nil {
+			win.SetContent(d.buildSettingsPanel(win))
+		}
+	}
+
 	var actionBtn *widget.Button
 	if authed {
 		actionBtn = widget.NewButton("Remove auth", func() {
+			actionBtn.Disable()
 			go func() {
-				_, _ = d.Runner.Run([]string{"auth", "logout", "--hostname", "github.com", "--yes"})
-				fyne.Do(func() { d.rebuildTrayMenu() })
+				_, err := d.Runner.Run([]string{"auth", "logout", "--hostname", "github.com", "--yes"})
+				fyne.Do(func() {
+					if err != nil {
+						log.Printf("auth logout: %v", err)
+						dialog.ShowError(fmt.Errorf("gh auth logout failed: %w", err), win)
+						actionBtn.Enable()
+						return
+					}
+					refresh()
+				})
 			}()
 		})
 	} else {
 		actionBtn = widget.NewButton("Log in...", func() {
+			actionBtn.Disable()
 			go func() {
 				_, err := d.Runner.Run([]string{"auth", "login", "--web", "--hostname", "github.com"})
-				if err != nil {
-					log.Printf("auth login: %v", err)
-				}
-				fyne.Do(func() { d.rebuildTrayMenu() })
+				fyne.Do(func() {
+					if err != nil {
+						log.Printf("auth login: %v", err)
+						dialog.ShowError(fmt.Errorf("gh auth login failed: %w", err), win)
+						actionBtn.Enable()
+						return
+					}
+					refresh()
+				})
 			}()
 		})
 	}

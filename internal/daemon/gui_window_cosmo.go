@@ -204,7 +204,7 @@ func thinDivider() fyne.CanvasObject {
 // header). Points at the embedded SVG; reuses the same asset as the
 // dock icon.
 func markIconResource() fyne.Resource {
-	return fyne.NewStaticResource("mark.svg", iconAppSVG)
+	return fyne.NewStaticResource("mark.svg", iconActiveSVG)
 }
 
 // ── CODESPACE DETAIL ────────────────────────────────────────────────────

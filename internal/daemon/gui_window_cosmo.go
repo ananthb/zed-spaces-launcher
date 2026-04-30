@@ -52,8 +52,10 @@ func (d *Daemon) newCosmoWindow() *unifiedWindow {
 		daemon:  d,
 		win:     win,
 		content: container.NewStack(),
+		banner:  container.NewVBox(),
 	}
 	uw.loadRepos()
+	uw.refreshBanner()
 
 	// Background fetch of all user repos.
 	go func() {
@@ -74,8 +76,38 @@ func (d *Daemon) newCosmoWindow() *unifiedWindow {
 
 	split := container.NewHSplit(sidebar, uw.content)
 	split.Offset = 0.32
-	win.SetContent(split)
+	win.SetContent(container.NewBorder(uw.banner, nil, nil, nil, split))
 	return uw
+}
+
+// refreshBanner re-renders the top banner based on the daemon's current
+// list-error state. Currently surfaces missing-codespace-scope only; other
+// errors stay in the log.
+func (uw *unifiedWindow) refreshBanner() {
+	uw.banner.Objects = nil
+	err := uw.daemon.ListErr()
+	if err == nil {
+		uw.banner.Refresh()
+		return
+	}
+	if !strings.Contains(err.Error(), `needs the "codespace" scope`) {
+		uw.banner.Refresh()
+		return
+	}
+
+	msg := canvas.NewText("GitHub token is missing the codespace scope — codespaces won't load until granted.", cText)
+	msg.TextSize = 12
+
+	fixBtn := primaryButton("Run gh auth refresh", func() {
+		go openCommandInTerminal(`gh auth refresh -h github.com -s codespace; echo; echo "Press enter to close"; read _`)
+	})
+
+	row := container.NewBorder(nil, nil, nil, fixBtn, container.NewVBox(msg))
+	uw.banner.Objects = []fyne.CanvasObject{
+		container.NewPadded(row),
+		thinDivider(),
+	}
+	uw.banner.Refresh()
 }
 
 // buildCosmoSidebar constructs the left pane with title row, search,
@@ -96,7 +128,30 @@ func (uw *unifiedWindow) buildCosmoSidebar() fyne.CanvasObject {
 	})
 	newBtn.Importance = widget.LowImportance
 
-	titleRow := container.NewBorder(nil, nil, container.NewHBox(mark, title), newBtn)
+	var refreshBtn *widget.Button
+	refreshBtn = widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), func() {
+		refreshBtn.Disable()
+		go func() {
+			uw.daemon.poll()
+			allUserRepos, err := codespace.ListAllRepos(uw.daemon.Runner)
+			if err != nil {
+				log.Printf("gui: refresh repos: %v", err)
+			}
+			fyne.Do(func() {
+				uw.loadRepos()
+				if len(allUserRepos) > 0 {
+					uw.allRepos = mergeRepos(uw.allRepos, allUserRepos)
+				}
+				uw.applyFilter()
+				uw.tree.Refresh()
+				uw.refreshBanner()
+				refreshBtn.Enable()
+			})
+		}()
+	})
+	refreshBtn.Importance = widget.LowImportance
+
+	titleRow := container.NewBorder(nil, nil, container.NewHBox(mark, title), container.NewHBox(refreshBtn, newBtn))
 
 	// Search
 	filterEntry := widget.NewEntry()
@@ -545,19 +600,25 @@ func githubURL(pathSegments ...string) *url.URL {
 // openSSHInTerminal opens an SSH session to a codespace in the default terminal.
 func openSSHInTerminal(sshAlias, workspacePath string) {
 	sshCmd := fmt.Sprintf("ssh -t %s 'cd %s && exec $SHELL -l'", sshAlias, workspacePath)
+	openCommandInTerminal(sshCmd)
+}
+
+// openCommandInTerminal launches the platform's default terminal emulator
+// running the given shell command. Used for any flow that needs a real TTY
+// (gh device-flow auth, SSH).
+func openCommandInTerminal(shellCmd string) {
 	if runtime.GOOS == "darwin" {
 		script := fmt.Sprintf(`tell application "Terminal"
 activate
 do script "%s"
-end tell`, sshCmd)
+end tell`, shellCmd)
 		exec.Command("osascript", "-e", script).Run()
-	} else {
-		// Linux: try common terminals.
-		for _, term := range []string{"ghostty", "alacritty", "kitty", "gnome-terminal", "xterm"} {
-			if _, err := exec.LookPath(term); err == nil {
-				exec.Command(term, "-e", "sh", "-c", sshCmd).Run()
-				return
-			}
+		return
+	}
+	for _, term := range []string{"ghostty", "alacritty", "kitty", "gnome-terminal", "xterm"} {
+		if _, err := exec.LookPath(term); err == nil {
+			exec.Command(term, "-e", "sh", "-c", shellCmd).Run()
+			return
 		}
 	}
 }

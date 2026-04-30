@@ -27,6 +27,7 @@ type Daemon struct {
 
 	mu         sync.Mutex
 	codespaces []codespace.Codespace
+	listErr    error
 	stopCh     chan struct{}
 	sessions   *SessionTracker
 }
@@ -117,4 +118,19 @@ func (d *Daemon) SetCodespaces(cs []codespace.Codespace) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.codespaces = cs
+}
+
+// ListErr returns the error from the most recent codespace list attempt,
+// or nil on success.
+func (d *Daemon) ListErr() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.listErr
+}
+
+// SetListErr stores the error from the most recent codespace list attempt.
+func (d *Daemon) SetListErr(err error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.listErr = err
 }

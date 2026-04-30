@@ -99,7 +99,7 @@ func (d *Daemon) buildAuthSection(win fyne.Window) fyne.CanvasObject {
 		actionBtn = widget.NewButton("Remove auth", func() {
 			actionBtn.Disable()
 			go func() {
-				_, err := d.Runner.Run([]string{"auth", "logout", "--hostname", "github.com", "--yes"})
+				_, err := d.Runner.Run([]string{"auth", "logout", "--hostname", "github.com"})
 				fyne.Do(func() {
 					if err != nil {
 						log.Printf("auth logout: %v", err)

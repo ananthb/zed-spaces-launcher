@@ -97,25 +97,147 @@ func ReadExistingAlias(includeDir, codespaceName string) (string, bool) {
 	return alias, true
 }
 
-// sshKeepAlive is appended to every codespace SSH config for connection
-// reliability. ServerAliveInterval pings the server every 15s,
-// ServerAliveCountMax drops after 3 missed pongs (45s timeout), and
-// ConnectionAttempts retries the initial connection up to 3 times.
-const sshKeepAlive = `  ServerAliveInterval 15
+// managedExtrasVersion is bumped whenever managedExtrasBody changes, so
+// existing on-disk confs get rewritten by RefreshAllManagedExtras on the
+// next applet start.
+const managedExtrasVersion = 2
+
+// managedExtrasBody is the cosmonaut-controlled tail of every codespace
+// conf. Indented two spaces so it sits inside gh's `Host cs-*` block.
+//
+// Keepalive: ServerAliveInterval pings every 15s, ServerAliveCountMax
+// drops after 3 missed pongs (45s), ConnectionAttempts retries the
+// initial connection 3x.
+//
+// IdentityAgent/PKCS11Provider none isolate codespace auth from the
+// user's main SSH agent and PKCS#11 provider, so connections don't fail
+// when a smartcard/YubiKey configured in ~/.ssh/config isn't plugged in.
+// gh emits explicit IdentityFile + IdentitiesOnly yes for codespaces, so
+// no agent is needed here.
+const managedExtrasBody = `  ServerAliveInterval 15
   ServerAliveCountMax 3
   ConnectionAttempts 3
+  IdentityAgent none
+  PKCS11Provider none
 `
 
-// WriteCodespaceConfig writes the SSH config for a specific codespace,
-// appending keepalive options for connection reliability.
+const (
+	managedBeginPrefix = "  # BEGIN cosmonaut managed extras"
+	managedEndPrefix   = "  # END cosmonaut managed extras"
+)
+
+// managedExtras returns the current sentinel-bracketed managed block.
+func managedExtras() string {
+	return fmt.Sprintf("%s v%d\n%s%s v%d\n",
+		managedBeginPrefix, managedExtrasVersion,
+		managedExtrasBody,
+		managedEndPrefix, managedExtrasVersion)
+}
+
+// applyManagedExtras returns content with any prior managed block (or
+// legacy unmarked extras from cosmonaut < v0.8.x) replaced by the
+// current managed block. Idempotent: applying twice yields the same
+// output as applying once.
+func applyManagedExtras(content string) string {
+	content = stripManagedBlock(content)
+	body := strings.TrimRight(content, "\n")
+	if body == "" {
+		return managedExtras()
+	}
+	return body + "\n" + managedExtras()
+}
+
+// stripManagedBlock removes the cosmonaut-managed tail from content.
+// It handles both sentinel-bracketed blocks (current) and legacy bare
+// extras starting with `  ServerAliveInterval 15` at column 0 of a
+// line (pre-sentinel cosmonaut versions).
+func stripManagedBlock(content string) string {
+	if i := indexAtLineStart(content, managedBeginPrefix); i >= 0 {
+		after := content[i:]
+		if j := strings.Index(after, managedEndPrefix); j >= 0 {
+			tail := after[j:]
+			if eol := strings.IndexByte(tail, '\n'); eol >= 0 {
+				return content[:i] + tail[eol+1:]
+			}
+			return content[:i]
+		}
+	}
+	if i := indexAtLineStart(content, "  ServerAliveInterval 15"); i >= 0 {
+		return content[:i]
+	}
+	return content
+}
+
+// indexAtLineStart finds substr in content, but only at the start of a
+// line (offset 0 or right after \n). Returns -1 if not found.
+func indexAtLineStart(content, substr string) int {
+	from := 0
+	for {
+		i := strings.Index(content[from:], substr)
+		if i < 0 {
+			return -1
+		}
+		abs := from + i
+		if abs == 0 || content[abs-1] == '\n' {
+			return abs
+		}
+		from = abs + 1
+	}
+}
+
+// WriteCodespaceConfig writes the SSH config for a codespace, replacing
+// any prior cosmonaut-managed tail with the current one.
 func WriteCodespaceConfig(includeDir, codespaceName, content string) error {
 	if err := os.MkdirAll(includeDir, 0700); err != nil {
 		return err
 	}
-	// Append keepalive options if not already present.
-	if !strings.Contains(content, "ServerAliveInterval") {
-		content = strings.TrimRight(content, "\n") + "\n" + sshKeepAlive
-	}
+	content = applyManagedExtras(content)
 	path := filepath.Join(includeDir, codespaceName+".conf")
 	return os.WriteFile(path, []byte(content), 0644)
+}
+
+// RefreshManagedExtras rewrites the managed block in path to the current
+// version. Returns true if the file was changed. No-op if already current
+// or if the file doesn't exist.
+func RefreshManagedExtras(path string) (bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	updated := applyManagedExtras(string(data))
+	if updated == string(data) {
+		return false, nil
+	}
+	return true, os.WriteFile(path, []byte(updated), 0644)
+}
+
+// RefreshAllManagedExtras walks includeDir and refreshes the managed
+// block in every *.conf file. Returns the number of files updated.
+// Safe to call on every applet startup: idempotent and cheap.
+func RefreshAllManagedExtras(includeDir string) (int, error) {
+	entries, err := os.ReadDir(includeDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	n := 0
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".conf") {
+			continue
+		}
+		full := filepath.Join(includeDir, e.Name())
+		changed, err := RefreshManagedExtras(full)
+		if err != nil {
+			return n, fmt.Errorf("%s: %w", full, err)
+		}
+		if changed {
+			n++
+		}
+	}
+	return n, nil
 }

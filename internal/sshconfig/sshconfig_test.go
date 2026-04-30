@@ -112,6 +112,84 @@ func TestRefreshManagedExtrasUpgradesLegacyFile(t *testing.T) {
 	}
 }
 
+func TestNeedsHostStarScoping(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want bool
+	}{
+		{"bare", "Host *\n  IdentityFile ~/.ssh/foo\n", true},
+		{"indented", "  Host *\n", true},
+		{"already scoped", "Host * !cs-* !cs.*\n  IdentityFile ~/.ssh/foo\n", false},
+		{"specific", "Host *.example.com\n", false},
+		{"multi pattern", "Host * server1\n", false},
+		{"no host star", "Host other\n  HostName x\n", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config")
+			if err := os.WriteFile(path, []byte(tc.body), 0644); err != nil {
+				t.Fatal(err)
+			}
+			got := NeedsHostStarScoping(path)
+			if got != tc.want {
+				t.Errorf("NeedsHostStarScoping = %v, want %v", got, tc.want)
+			}
+		})
+	}
+	// Missing file is not flagged.
+	if NeedsHostStarScoping(filepath.Join(t.TempDir(), "missing")) {
+		t.Error("missing file should not need scoping")
+	}
+}
+
+func TestScopeHostStarBlocks(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	original := "Include ~/.ssh/cosmonaut/*.conf\n\nHost *\n  IdentityFile ~/.ssh/yubikey\n"
+	if err := os.WriteFile(path, []byte(original), 0644); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := ScopeHostStarBlocks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Fatal("expected changed=true")
+	}
+	got, _ := os.ReadFile(path)
+	if !strings.Contains(string(got), "Host * !cs-* !cs.*") {
+		t.Errorf("Host * not scoped:\n%s", got)
+	}
+	if strings.Contains(string(got), "\nHost *\n") {
+		t.Errorf("bare Host * still present:\n%s", got)
+	}
+	// Backup written.
+	backup := path + MainConfigBackupSuffix
+	bakData, err := os.ReadFile(backup)
+	if err != nil {
+		t.Fatalf("backup not written: %v", err)
+	}
+	if string(bakData) != original {
+		t.Error("backup content mismatch")
+	}
+	// Idempotent: second call no-ops and doesn't overwrite the backup.
+	if err := os.WriteFile(backup, []byte("sentinel"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	changed, err = ScopeHostStarBlocks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed {
+		t.Error("expected idempotent second call")
+	}
+	bakData, _ = os.ReadFile(backup)
+	if string(bakData) != "sentinel" {
+		t.Error("backup got overwritten on idempotent call")
+	}
+}
+
 func TestRefreshAllManagedExtras(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "a.conf"), []byte("Host a\n  HostName a\n"), 0644); err != nil {

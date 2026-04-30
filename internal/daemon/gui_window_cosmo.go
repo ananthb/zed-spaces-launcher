@@ -34,6 +34,7 @@ import (
 	"image/color"
 
 	"github.com/linuskendall/cosmonaut/internal/codespace"
+	"github.com/linuskendall/cosmonaut/internal/sshconfig"
 )
 
 const (
@@ -80,34 +81,62 @@ func (d *Daemon) newCosmoWindow() *unifiedWindow {
 	return uw
 }
 
-// refreshBanner re-renders the top banner based on the daemon's current
-// list-error state. Currently surfaces missing-codespace-scope only; other
-// errors stay in the log.
+// refreshBanner re-renders the top banner. Surfaces, in order:
+//   - GitHub token missing the codespace scope (one-click `gh auth refresh`).
+//   - `~/.ssh/config` has a catch-all `Host *` block that matches codespace
+//     hosts and breaks ssh when an IdentityFile points at a YubiKey/SK key
+//     and the device isn't plugged in (one-click scope to `Host * !cs-* !cs.*`).
+//
+// Each builder returns nil when its condition isn't active.
 func (uw *unifiedWindow) refreshBanner() {
 	uw.banner.Objects = nil
-	err := uw.daemon.ListErr()
-	if err == nil {
-		uw.banner.Refresh()
-		return
+	for _, b := range []fyne.CanvasObject{
+		uw.buildAuthScopeBanner(),
+		uw.buildHostStarBanner(),
+	} {
+		if b == nil {
+			continue
+		}
+		uw.banner.Objects = append(uw.banner.Objects, b, thinDivider())
 	}
-	if !strings.Contains(err.Error(), `needs the "codespace" scope`) {
-		uw.banner.Refresh()
-		return
-	}
+	uw.banner.Refresh()
+}
 
+func (uw *unifiedWindow) buildAuthScopeBanner() fyne.CanvasObject {
+	err := uw.daemon.ListErr()
+	if err == nil || !strings.Contains(err.Error(), `needs the "codespace" scope`) {
+		return nil
+	}
 	msg := canvas.NewText("GitHub token is missing the codespace scope — codespaces won't load until granted.", cText)
 	msg.TextSize = 12
-
 	fixBtn := primaryButton("Run gh auth refresh", func() {
 		go openCommandInTerminal(`gh auth refresh -h github.com -s codespace; echo; echo "Press enter to close"; read _`)
 	})
-
 	row := container.NewBorder(nil, nil, nil, fixBtn, container.NewVBox(msg))
-	uw.banner.Objects = []fyne.CanvasObject{
-		container.NewPadded(row),
-		thinDivider(),
+	return container.NewPadded(row)
+}
+
+func (uw *unifiedWindow) buildHostStarBanner() fyne.CanvasObject {
+	paths := sshconfig.ResolvePaths()
+	if !sshconfig.NeedsHostStarScoping(paths.MainConfigPath) {
+		return nil
 	}
-	uw.banner.Refresh()
+	msg := canvas.NewText("~/.ssh/config has a `Host *` rule that also matches codespaces — can break SSH when a YubiKey/SK key in IdentityFile isn't plugged in.", cText)
+	msg.TextSize = 12
+	fixBtn := primaryButton("Scope Host * for codespaces", func() {
+		go func() {
+			changed, err := sshconfig.ScopeHostStarBlocks(paths.MainConfigPath)
+			if err != nil {
+				log.Printf("ssh: scope host *: %v", err)
+			} else if changed {
+				log.Printf("ssh: scoped Host * in %s; original backed up to %s%s",
+					paths.MainConfigPath, paths.MainConfigPath, sshconfig.MainConfigBackupSuffix)
+			}
+			fyne.Do(func() { uw.refreshBanner() })
+		}()
+	})
+	row := container.NewBorder(nil, nil, nil, fixBtn, container.NewVBox(msg))
+	return container.NewPadded(row)
 }
 
 // buildCosmoSidebar constructs the left pane with title row, search,

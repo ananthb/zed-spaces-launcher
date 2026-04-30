@@ -13,7 +13,23 @@ import (
 
 const SSHIncludeLine = "Include ~/.ssh/cosmonaut/*.conf"
 
+// HostStarScopedLine is the form a bare `Host *` is rewritten to when the
+// user accepts the scoping fix. The negation patterns prevent the
+// catch-all block from contributing IdentityFile / IdentityAgent / etc.
+// to codespace hosts (gh emits both `cs-*` and `cs.*` aliases).
+const HostStarScopedLine = "Host * !cs-* !cs.*"
+
+// MainConfigBackupSuffix is appended to the main ssh config path for the
+// one-shot backup written before ScopeHostStarBlocks first modifies it.
+const MainConfigBackupSuffix = ".cosmonaut.bak"
+
 var hostAliasRe = regexp.MustCompile(`(?m)^\s*Host\s+([^\s*][^\s]*)\s*$`)
+
+// hostStarLineRe matches lines that are exactly `Host *` (case-insensitive,
+// any leading whitespace, any trailing whitespace). More complex patterns
+// like `Host *.example.com`, `Host * server1`, or `Host * !already` are
+// deliberately not matched — those are too risky to rewrite blindly.
+var hostStarLineRe = regexp.MustCompile(`(?im)^([ \t]*)Host[ \t]+\*[ \t]*$`)
 
 // ParsePrimaryHostAlias extracts the first concrete Host entry from SSH config text.
 func ParsePrimaryHostAlias(sshConfig string) (string, error) {
@@ -79,6 +95,48 @@ func EnsureConfigIncludesGenerated(mainConfigPath string) error {
 		return err
 	}
 	return os.WriteFile(mainConfigPath, []byte(updated), 0644)
+}
+
+// NeedsHostStarScoping reports whether mainConfigPath contains any bare
+// `Host *` lines that should be narrowed so the catch-all block doesn't
+// apply to codespace hosts. Returns false on read errors or missing file
+// (the GUI banner shouldn't pester users without an actionable fix).
+func NeedsHostStarScoping(mainConfigPath string) bool {
+	data, err := os.ReadFile(mainConfigPath)
+	if err != nil {
+		return false
+	}
+	return hostStarLineRe.Match(data)
+}
+
+// ScopeHostStarBlocks rewrites bare `Host *` lines in mainConfigPath to
+// `Host * !cs-* !cs.*` so codespace hosts skip catch-all auth rules
+// (e.g. an IdentityFile pointing at a YubiKey-resident SK key that
+// blocks ssh when the device isn't plugged in). Idempotent.
+//
+// Writes a one-shot backup to mainConfigPath+MainConfigBackupSuffix
+// before the first modification, so the user can recover the original
+// if the rewrite breaks something else for them. Subsequent runs leave
+// the existing backup untouched.
+func ScopeHostStarBlocks(mainConfigPath string) (bool, error) {
+	data, err := os.ReadFile(mainConfigPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	updated := hostStarLineRe.ReplaceAllString(string(data), "${1}"+HostStarScopedLine)
+	if updated == string(data) {
+		return false, nil
+	}
+	backup := mainConfigPath + MainConfigBackupSuffix
+	if _, err := os.Stat(backup); os.IsNotExist(err) {
+		if err := os.WriteFile(backup, data, 0644); err != nil {
+			return false, fmt.Errorf("backup %s: %w", backup, err)
+		}
+	}
+	return true, os.WriteFile(mainConfigPath, []byte(updated), 0644)
 }
 
 // ReadExistingAlias reads the SSH alias from an existing codespace config file.

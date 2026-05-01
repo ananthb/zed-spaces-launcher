@@ -34,7 +34,7 @@ import (
 	"image/color"
 
 	"github.com/linuskendall/cosmonaut/internal/codespace"
-	"github.com/linuskendall/cosmonaut/internal/sshconfig"
+	"github.com/linuskendall/cosmonaut/internal/doctor"
 )
 
 const (
@@ -57,6 +57,12 @@ func (d *Daemon) newCosmoWindow() *unifiedWindow {
 	}
 	uw.loadRepos()
 	uw.refreshBanner()
+	d.setActiveUnifiedWindow(uw)
+	win.SetOnClosed(func() {
+		if d.activeUnifiedWindow() == uw {
+			d.setActiveUnifiedWindow(nil)
+		}
+	})
 
 	// Background fetch of all user repos.
 	go func() {
@@ -81,62 +87,89 @@ func (d *Daemon) newCosmoWindow() *unifiedWindow {
 	return uw
 }
 
-// refreshBanner re-renders the top banner. Surfaces, in order:
-//   - GitHub token missing the codespace scope (one-click `gh auth refresh`).
-//   - `~/.ssh/config` has a catch-all `Host *` block that matches codespace
-//     hosts and breaks ssh when an IdentityFile points at a YubiKey/SK key
-//     and the device isn't plugged in (one-click scope to `Host * !cs-* !cs.*`).
-//
-// Each builder returns nil when its condition isn't active.
+// refreshBanner re-renders the top banner. The banner is sourced from
+// the doctor.Catalog so adding a check there automatically gives it a
+// banner. Each banner can be dismissed; dismissed checks remain visible
+// in the Settings page Health section.
 func (uw *unifiedWindow) refreshBanner() {
 	uw.banner.Objects = nil
-	for _, b := range []fyne.CanvasObject{
-		uw.buildAuthScopeBanner(),
-		uw.buildHostStarBanner(),
-	} {
-		if b == nil {
+	for _, c := range doctor.Catalog(uw.daemon.ListErr) {
+		issue := c.Status()
+		if issue == nil || uw.daemon.IsDismissed(c.ID) {
 			continue
 		}
-		uw.banner.Objects = append(uw.banner.Objects, b, thinDivider())
+		uw.banner.Objects = append(uw.banner.Objects, uw.buildIssueBanner(c, issue))
 	}
 	uw.banner.Refresh()
 }
 
-func (uw *unifiedWindow) buildAuthScopeBanner() fyne.CanvasObject {
-	err := uw.daemon.ListErr()
-	if err == nil || !strings.Contains(err.Error(), `needs the "codespace" scope`) {
-		return nil
+// buildIssueBanner renders a prominent, dismissable banner for one
+// failing check. A tinted background and bold severity badge make the
+// banner hard to miss, so users notice cosmonaut needs their attention.
+func (uw *unifiedWindow) buildIssueBanner(c doctor.Check, issue *doctor.Issue) fyne.CanvasObject {
+	accent := cOrange
+	badgeText := "WARNING"
+	if issue.Severity == doctor.SeverityError {
+		accent = cRed
+		badgeText = "ERROR"
 	}
-	msg := canvas.NewText("GitHub token is missing the codespace scope — codespaces won't load until granted.", cText)
-	msg.TextSize = 12
-	fixBtn := primaryButton("Run gh auth refresh", func() {
-		go openCommandInTerminal(`gh auth refresh -h github.com -s codespace; echo; echo "Press enter to close"; read _`)
+
+	bg := canvas.NewRectangle(color.NRGBA{accent.R, accent.G, accent.B, 0x22})
+	bg.StrokeColor = color.NRGBA{accent.R, accent.G, accent.B, 0x77}
+	bg.StrokeWidth = 1
+	bg.CornerRadius = 6
+
+	badge := canvas.NewText(badgeText, accent)
+	badge.TextSize = 10
+	badge.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
+
+	title := canvas.NewText(c.Title, cText)
+	title.TextSize = 13
+	title.TextStyle = fyne.TextStyle{Bold: true}
+
+	summary := widget.NewLabel(issue.Summary)
+	summary.Wrapping = fyne.TextWrapWord
+
+	titleRow := container.NewHBox(badge, title)
+	leftStack := container.NewVBox(titleRow, summary)
+
+	dismissBtn := widget.NewButton("Dismiss", func() {
+		uw.daemon.DismissCheck(c.ID)
+		uw.refreshBanner()
 	})
-	row := container.NewBorder(nil, nil, nil, fixBtn, container.NewVBox(msg))
-	return container.NewPadded(row)
+	dismissBtn.Importance = widget.LowImportance
+
+	actions := container.NewHBox(layout.NewSpacer())
+	if fix := uw.fixButton(c); fix != nil {
+		actions.Add(fix)
+	}
+	actions.Add(dismissBtn)
+
+	body := container.NewBorder(nil, actions, nil, nil, leftStack)
+	stack := container.NewStack(bg, container.NewPadded(body))
+	return container.NewPadded(stack)
 }
 
-func (uw *unifiedWindow) buildHostStarBanner() fyne.CanvasObject {
-	paths := sshconfig.ResolvePaths()
-	if !sshconfig.NeedsHostStarScoping(paths.MainConfigPath) {
-		return nil
+// fixButton returns the appropriate "fix this" button for a check, or
+// nil if no fix is available.
+func (uw *unifiedWindow) fixButton(c doctor.Check) *widget.Button {
+	switch {
+	case c.HasInProcessFix():
+		return primaryButton("Fix", func() {
+			go func() {
+				if err := c.Fix(); err != nil {
+					log.Printf("doctor: fix %s: %v", c.ID, err)
+				}
+				fyne.Do(func() { uw.refreshBanner() })
+			}()
+		})
+	case c.HasTerminalFix():
+		return primaryButton("Fix in terminal", func() {
+			cmd := c.FixCommand() + `; echo; echo "Press enter to close"; read _`
+			go openCommandInTerminal(cmd)
+		})
 	}
-	msg := canvas.NewText("~/.ssh/config has a `Host *` rule that also matches codespaces — can break SSH when a YubiKey/SK key in IdentityFile isn't plugged in.", cText)
-	msg.TextSize = 12
-	fixBtn := primaryButton("Scope Host * for codespaces", func() {
-		go func() {
-			changed, err := sshconfig.ScopeHostStarBlocks(paths.MainConfigPath)
-			if err != nil {
-				log.Printf("ssh: scope host *: %v", err)
-			} else if changed {
-				log.Printf("ssh: scoped Host * in %s; original backed up to %s%s",
-					paths.MainConfigPath, paths.MainConfigPath, sshconfig.MainConfigBackupSuffix)
-			}
-			fyne.Do(func() { uw.refreshBanner() })
-		}()
-	})
-	row := container.NewBorder(nil, nil, nil, fixBtn, container.NewVBox(msg))
-	return container.NewPadded(row)
+	return nil
 }
 
 // buildCosmoSidebar constructs the left pane with title row, search,

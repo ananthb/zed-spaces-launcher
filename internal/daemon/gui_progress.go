@@ -1,8 +1,8 @@
 package daemon
 
 import (
+	"math/rand"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -29,13 +29,8 @@ type progressScreen struct {
 	done     chan struct{}
 }
 
-// animationCounter advances every time newProgressScreen is called so
-// successive flows pick the next animation in the catalog.
-var animationCounter atomic.Uint64
-
 func nextAnimation() []string {
-	idx := animationCounter.Add(1) - 1
-	return animations[idx%uint64(len(animations))]
+	return animations[rand.Intn(len(animations))]
 }
 
 func newProgressScreen(message string) *progressScreen {
@@ -332,7 +327,7 @@ var moonShotFrames = []string{
        /\
       /==\
      /====\
-     |    |
+     |NASA|
      /||||\
     /======\
    ==[||||]==`,
@@ -344,7 +339,7 @@ var moonShotFrames = []string{
        /\
       /==\
      /====\
-     |    |
+     |NASA|
      /||||\
     /======\
     *VVVVV*    `,
@@ -355,7 +350,7 @@ var moonShotFrames = []string{
        /\
       /==\
      /====\
-     |    |
+     |NASA|
      /||||\
     /======\
     *VVVVV*
@@ -366,7 +361,7 @@ var moonShotFrames = []string{
        /\
       /==\
      /====\
-     |    |
+     |NASA|
      /||||\
     /======\
     *VVVVV*

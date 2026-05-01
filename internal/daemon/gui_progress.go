@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -10,26 +11,37 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// progressScreen runs an on-theme rocket-launch animation while a long-running
-// flow (codespace boot, SSH connect, editor launch) is in progress.
+// progressScreen runs an on-theme animation while a long-running flow
+// (codespace boot, SSH connect, editor launch) is in progress.
 //
-// The animation has two phases:
-//
-//  1. launch: a one-shot lift-off sequence that plays once on first show.
-//  2. cruise: a looping flight-through-stars sequence that plays until the
-//     screen is replaced or stop() is called.
+// The screen picks one of several animations on each invocation in a
+// round-robin so the user sees variety across launches. All frames are
+// 12 rows tall and 15 columns wide so the layout stays stable when one
+// animation is swapped for another.
 type progressScreen struct {
-	rocket *widget.Label
+	ship   *widget.Label
 	status *widget.Label
 	canvas fyne.CanvasObject
+
+	frames []string
 
 	stopOnce sync.Once
 	done     chan struct{}
 }
 
+// animationCounter advances every time newProgressScreen is called so
+// successive flows pick the next animation in the catalog.
+var animationCounter atomic.Uint64
+
+func nextAnimation() []string {
+	idx := animationCounter.Add(1) - 1
+	return animations[idx%uint64(len(animations))]
+}
+
 func newProgressScreen(message string) *progressScreen {
-	rocket := widget.NewLabelWithStyle(
-		launchFrames[0],
+	frames := nextAnimation()
+	ship := widget.NewLabelWithStyle(
+		frames[0],
 		fyne.TextAlignLeading,
 		fyne.TextStyle{Monospace: true},
 	)
@@ -38,15 +50,16 @@ func newProgressScreen(message string) *progressScreen {
 
 	content := container.NewVBox(
 		layout.NewSpacer(),
-		container.NewCenter(rocket),
+		container.NewCenter(ship),
 		status,
 		layout.NewSpacer(),
 	)
 
 	p := &progressScreen{
-		rocket: rocket,
+		ship:   ship,
 		status: status,
 		canvas: container.NewPadded(content),
+		frames: frames,
 		done:   make(chan struct{}),
 	}
 	go p.animate()
@@ -63,36 +76,94 @@ func (p *progressScreen) stop() {
 }
 
 func (p *progressScreen) animate() {
-	const frameDelay = 220 * time.Millisecond
+	const frameDelay = 240 * time.Millisecond
 	ticker := time.NewTicker(frameDelay)
 	defer ticker.Stop()
 
-	for i := 1; i < len(launchFrames); i++ {
+	for i := 1; ; i = (i + 1) % len(p.frames) {
 		select {
 		case <-p.done:
 			return
 		case <-ticker.C:
 		}
-		frame := launchFrames[i]
-		fyne.Do(func() { p.rocket.SetText(frame) })
-	}
-
-	for i := 0; ; i = (i + 1) % len(cruiseFrames) {
-		select {
-		case <-p.done:
-			return
-		case <-ticker.C:
-		}
-		frame := cruiseFrames[i]
-		fyne.Do(func() { p.rocket.SetText(frame) })
+		frame := p.frames[i]
+		fyne.Do(func() { p.ship.SetText(frame) })
 	}
 }
 
-// launchFrames play once: rocket on the pad, ignites, lifts off, climbs out
-// of view. Each frame is exactly 12 rows tall and 15 columns wide so the
-// canvas does not jump between frames.
-var launchFrames = []string{
-	// 0: standing on the pad
+// animations is the catalog the progress screen rotates through.
+var animations = [][]string{
+	starshipFrames,
+	rocketLaunchFrames,
+	mountainFloatFrames,
+	moonShotFrames,
+	wobblyRocketFrames,
+	arcadeShooterFrames,
+}
+
+// ── 1. Starship cruising through stars ─────────────────────────────
+//
+// Wide saucer with portholes, neck down to an engineering hull, two
+// pylons spreading to a pair of warp nacelles that pulse between
+// frames. The starfield scrolls down past the ship to suggest forward
+// flight.
+var starshipFrames = []string{
+	`   *    .
+    _______
+   /       \
+  /  o   o  \
+   \_______/
+       |
+    [=====]
+   //     \\
+  /==\   /==\
+.      *      .
+   .      *
+       .       `,
+	`       .
+    _______
+   /       \
+  /  o   o  \
+   \_______/
+       |
+    [=====]
+   //     \\
+  /**\   /**\
+*      .      *
+.      *      .
+   .      *    `,
+	`*       .
+    _______
+   /       \
+  /  o   o  \
+   \_______/
+       |
+    [=====]
+   //     \\
+  /==\   /==\
+       .
+*      .      *
+.      *      .`,
+	`   .      *
+    _______
+   /       \
+  /  o   o  \
+   \_______/
+       |
+    [=====]
+   //     \\
+  /**\   /**\
+   .      *
+       .
+*      .      *`,
+}
+
+// ── 2. Cute rocket lift-off ────────────────────────────────────────
+//
+// A small rocket sits on the pad, ignites, and climbs out of the
+// canvas with a trailing exhaust. The loop "lands" the rocket back on
+// the pad each cycle, but the rocket itself is endearing so it stays.
+var rocketLaunchFrames = []string{
 	`.      *      .
    *
       .
@@ -105,7 +176,6 @@ var launchFrames = []string{
      /||\
     /====\
   /==[||]==\   `,
-	// 1: ignition, flame appears under the rocket
 	`.      *      .
    *
       .
@@ -118,7 +188,6 @@ var launchFrames = []string{
     /====\
     \V||V/
   /==[||]==\   `,
-	// 2: lift-off, rocket clears the pad, exhaust trail forms
 	`.      *      .
    *
       .
@@ -131,7 +200,6 @@ var launchFrames = []string{
     \V||V/
       ::
   /========\   `,
-	// 3: climbing
 	`.      *      .
    *
       .
@@ -144,7 +212,6 @@ var launchFrames = []string{
       ::
       ::
   /========\   `,
-	// 4
 	`.      *      .
    *
       .
@@ -157,7 +224,6 @@ var launchFrames = []string{
       ::
       ::
   /========\   `,
-	// 5
 	`.      *      .
    *
       .
@@ -170,7 +236,6 @@ var launchFrames = []string{
       ::
       ::
   /========\   `,
-	// 6
 	`.      *      .
    *
       /\
@@ -183,7 +248,6 @@ var launchFrames = []string{
       ::
       ::
   /========\   `,
-	// 7: nearing the top of the canvas
 	`.      *      .
       /\
      /||\
@@ -198,56 +262,229 @@ var launchFrames = []string{
   /========\   `,
 }
 
-// cruiseFrames loop while the rocket is in space. The rocket sits at the top
-// of the canvas, the exhaust nozzle flickers, and the starfield scrolls
-// downward to suggest continued upward flight.
-var cruiseFrames = []string{
-	`      /\
-     /||\
-    /====\
-    \V||V/
-.
-       *
-   .
+// ── 3. Stoic floating bust drifting over angular mountains ─────────
+//
+// A serene founder-figure floats over geometric peaks. Generic stoic
+// bust silhouette, no specific likeness; mountains scroll left to
+// suggest forward flight.
+var mountainFloatFrames = []string{
+	`       o
+   *       .
+
+    .---.
+    |o o|
+    | _ |
+    '---'
+   /|||\
+
+   /\    /\
+  /  \  /  \
+==============`,
+	`       o
        .
-*
+   *
+     .---.
+     |o o|
+     | _ |
+     '---'
+    /|||\
+
+  /\    /\
+ /  \  /  \
+=============_`,
+	`       o
    .       *
-.        .
-        .      `,
-	`      /\
-     /||\
-    /====\
-    \v||v/
-   .       .
-.
+
+      .---.
+      |o o|
+      | _ |
+      '---'
+     /|||\
+
+ /\    /\    /
+/  \  /  \  /
+============__`,
+	`       o
        *
    .
+     .---.
+     |o o|
+     | _ |
+     '---'
+    /|||\
+
+\    /\    /\
+ \  /  \  /  \
+===========___`,
+}
+
+// ── 4. Multi-stage moon-shot rocket ────────────────────────────────
+//
+// A tall stage-stacked rocket lifts off the pad with a growing exhaust
+// trail, reaching toward the Moon at the top of the canvas. Loop
+// restarts the launch so the screen reads as "moon shots, on repeat".
+var moonShotFrames = []string{
+	`         __
+        /  \
+        \__/
+
+
+       /\
+      /==\
+     /====\
+     |    |
+     /||||\
+    /======\
+   ==[||||]==`,
+	`         __
+        /  \
+        \__/
+
+
+       /\
+      /==\
+     /====\
+     |    |
+     /||||\
+    /======\
+    *VVVVV*    `,
+	`         __
+        /  \
+        \__/
+
+       /\
+      /==\
+     /====\
+     |    |
+     /||||\
+    /======\
+    *VVVVV*
+       ||      `,
+	`         __
+        /  \
+        \__/
+       /\
+      /==\
+     /====\
+     |    |
+     /||||\
+    /======\
+    *VVVVV*
+       ||
+       ::      `,
+}
+
+// ── 5. Wobbly top-heavy crewed rocket ──────────────────────────────
+//
+// A comically over-engineered rocket with two crew visible in a
+// porthole, asymmetric boosters, and chaotic exhaust. The whole stack
+// wobbles left and right between frames; the trajectory is, generously
+// speaking, an aspiration.
+var wobblyRocketFrames = []string{
+	`  *      .   *
        .
-*
    .       *
-.        .     `,
-	`      /\
-     /||\
-    /====\
-    \V||V/
-.        .
-   .       .
-.
        *
-   .
+       /\
+      /==\
+     |o  o|
+     |    |
+     /====\
+    /||||||\
+    ||||||||
+     *VVVV*    `,
+	`  *      .   *
        .
-*
-   .       *   `,
-	`      /\
-     /||\
-    /====\
-    \v||v/
    .       *
-.        .
-   .       .
-.
        *
-   .
+        /\
+       /==\
+      |o  o|
+      |    |
+      /====\
+     /||||||\
+     ||||||||
+      *vVvV*   `,
+	`  *      .   *
        .
-*              `,
+   .       *
+       *
+      /\
+     /==\
+    |o  o|
+    |    |
+    /====\
+   /||||||\
+   ||||||||
+    *VvVv*     `,
+	`  *      .   *
+       .
+   .       *
+       *
+       /\
+      /==\
+     |o  o|
+     |    |
+     /====\
+    /||||||\
+    ||||||||
+     ~VvVv~    `,
+}
+
+// ── 6. Pixel-arcade alien-shooter homage ───────────────────────────
+//
+// A formation of three rows of squat aliens shuffles right then back
+// left while the lone defender at the bottom of the canvas fires a
+// bullet up the centre column. On the fourth frame the bullet meets
+// the middle alien in a small explosion, then the loop restarts and
+// the next wave slides into formation.
+var arcadeShooterFrames = []string{
+	`*           *
+  <O> <O> <O>
+   <O> <O>
+  <O> <O> <O>
+
+
+
+
+
+
+       |
+     [_^_]    `,
+	` *         *
+   <O> <O> <O>
+    <O> <O>
+   <O> <O> <O>
+
+
+
+       |
+
+
+
+     [_^_]    `,
+	`   *      *
+    <O> <O> <O>
+     <O> <O>
+    <O> <O> <O>
+       |
+
+
+
+
+
+
+     [_^_]    `,
+	`*       *
+   <O> *** <O>
+    <O> <O>
+   <O> <O> <O>
+
+
+
+
+
+
+
+     [_^_]    `,
 }

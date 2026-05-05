@@ -28,8 +28,6 @@ type Daemon struct {
 	mu         sync.Mutex
 	codespaces []codespace.Codespace
 	portCache  map[string]portCacheEntry
-	stopCh     chan struct{}
-	sessions   *SessionTracker
 	forwards   *PortForwardManager
 	listErr    error
 	stopCh     chan struct{}

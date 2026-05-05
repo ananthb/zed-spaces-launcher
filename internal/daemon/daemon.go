@@ -27,8 +27,10 @@ type Daemon struct {
 
 	mu         sync.Mutex
 	codespaces []codespace.Codespace
+	portCache  map[string]portCacheEntry
 	stopCh     chan struct{}
 	sessions   *SessionTracker
+	forwards   *PortForwardManager
 }
 
 // New creates a new Daemon with the given config.
@@ -43,6 +45,7 @@ func New(cfg *config.Config, configPath string) *Daemon {
 		Runner:     codespace.DefaultGHRunner{},
 		stopCh:     make(chan struct{}),
 		sessions:   newSessionTracker(mode),
+		forwards:   newPortForwardManager(),
 	}
 }
 
@@ -94,6 +97,9 @@ func (d *Daemon) Stop() {
 
 	if d.sessions != nil {
 		d.sessions.Stop()
+	}
+	if d.forwards != nil {
+		d.forwards.StopAll()
 	}
 
 	if d.app != nil {

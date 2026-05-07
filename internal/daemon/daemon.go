@@ -27,6 +27,8 @@ type Daemon struct {
 
 	mu         sync.Mutex
 	codespaces []codespace.Codespace
+	portCache  map[string]portCacheEntry
+	forwards   *PortForwardManager
 	listErr    error
 	stopCh     chan struct{}
 	sessions   *SessionTracker
@@ -92,6 +94,7 @@ func New(cfg *config.Config, configPath string) *Daemon {
 		Runner:     codespace.DefaultGHRunner{},
 		stopCh:     make(chan struct{}),
 		sessions:   newSessionTracker(mode),
+		forwards:   newPortForwardManager(),
 	}
 }
 
@@ -143,6 +146,9 @@ func (d *Daemon) Stop() {
 
 	if d.sessions != nil {
 		d.sessions.Stop()
+	}
+	if d.forwards != nil {
+		d.forwards.StopAll()
 	}
 
 	if d.app != nil {

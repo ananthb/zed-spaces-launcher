@@ -18,8 +18,25 @@ go run .
 ## Testing
 
 ```bash
-go test ./...
+xvfb-run -a go test ./...
 ```
+
+The daemon imports the global hotkey package, which initializes X11 on Linux.
+Use `xvfb-run` in headless environments such as Codespaces.
+
+## Local macOS test builds
+
+On a Mac, build a downloadable test binary and app bundle zip with:
+
+```bash
+scripts/build-macos-local.sh arm64
+```
+
+This writes `dist/cosmonaut-darwin-arm64` and
+`dist/cosmonaut-macos-arm64.zip`.
+
+Linux-to-macOS builds require Apple's macOS SDK and a Darwin-capable linker
+because the app uses Fyne/CGO. Plain `GOOS=darwin` builds are not sufficient.
 
 ## Version bumps
 

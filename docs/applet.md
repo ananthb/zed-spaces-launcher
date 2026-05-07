@@ -11,6 +11,7 @@ cosmonaut applet
 - **System tray icon**: Z-in-cloud icon; hollow when idle, filled when tracking active codespaces
 - **Global hotkey**: configurable shortcut (default `Cmd+Shift+S` on macOS, `Ctrl+Shift+S` on Linux)
 - **Tray menu**: default target, recent repos, full picker
+- **Port actions**: open/copy Codespaces forwarded-port URLs and start localhost forwards
 - **Codespace polling**: monitors running codespaces, sends desktop notifications on state changes
 - **Pre-warm**: creates or starts codespaces on a daily schedule before work hours
 - **Sleep inhibitor**: optionally holds a sleep/shutdown inhibitor while a launched SSH session is alive (see the `inhibitSleep` daemon option)
@@ -32,6 +33,10 @@ Both `previous` and `default` fall back to the picker if there's no history or n
 ## Tray menu structure
 
 The tray menu lists the default target first, then recent repositories from history. Hovering a repository reveals a submenu of its codespaces (up to five, sorted with Available and Starting first).
+
+Each codespace submenu includes a port list loaded from `gh codespace ports`. For each forwarded port you can open the GitHub browse URL, copy it, or start a localhost forward using `gh codespace ports forward <remote>:<local> -c <codespace>`. Cosmonaut uses the same remote and local port for the one-click action, for example `1455:1455`.
+
+If the local port is already in use, including by another codespace forward, Cosmonaut shows a notification instead of starting a duplicate forward.
 
 ## Quick reconnect
 

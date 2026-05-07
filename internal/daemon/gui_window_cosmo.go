@@ -2,13 +2,13 @@
 //
 // Layout:
 //
-//   ┌────────────┬──────────────────────────────────────┐
-//   │  Sidebar   │  Detail panel                        │
-//   │  (logo,    │  (codespace detail / create / repo)  │
-//   │   search,  │                                      │
-//   │   tree,    │                                      │
-//   │   account) │                                      │
-//   └────────────┴──────────────────────────────────────┘
+//	┌────────────┬──────────────────────────────────────┐
+//	│  Sidebar   │  Detail panel                        │
+//	│  (logo,    │  (codespace detail / create / repo)  │
+//	│   search,  │                                      │
+//	│   tree,    │                                      │
+//	│   account) │                                      │
+//	└────────────┴──────────────────────────────────────┘
 //
 // The bulk of structure mirrors the existing gui_window.go; this file
 // rewrites the visual wrapping (title bar, search chrome, captions,
@@ -432,6 +432,8 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 		widget.NewFormItem("Path", pathVal),
 	)
 
+	ports := uw.buildCodespacePortsSection(cs.Name, repo)
+
 	body := container.NewVBox(
 		statusRow,
 		heroTitle,
@@ -440,8 +442,85 @@ func (uw *unifiedWindow) showCosmoCodespaceDetail(csName, repo string) {
 		actions,
 		widget.NewSeparator(),
 		info,
+		widget.NewSeparator(),
+		ports,
 	)
 	uw.setContent(container.NewPadded(body))
+}
+
+func (uw *unifiedWindow) buildCodespacePortsSection(csName, repo string) fyne.CanvasObject {
+	title := caption("PORTS")
+	refreshBtn := widget.NewButton("Refresh", func() {
+		uw.daemon.refreshPortsAsync(csName, func() {
+			uw.showCosmoCodespaceDetail(csName, repo)
+		})
+	})
+	header := container.NewHBox(title, layout.NewSpacer(), refreshBtn)
+
+	entry := uw.daemon.ensurePortsWithCallback(csName, func() {
+		uw.showCosmoCodespaceDetail(csName, repo)
+	})
+
+	var rows []fyne.CanvasObject
+	rows = append(rows, header)
+	switch {
+	case entry.Loading:
+		rows = append(rows, widget.NewLabel("Loading forwarded ports..."))
+	case entry.Err != nil:
+		rows = append(rows, widget.NewLabel("Ports unavailable. Refresh to try again."))
+	case len(entry.Ports) == 0:
+		rows = append(rows, widget.NewLabel("No forwarded ports."))
+	default:
+		for _, port := range entry.Ports {
+			rows = append(rows, uw.portRow(csName, repo, port))
+		}
+	}
+	return container.NewVBox(rows...)
+}
+
+func (uw *unifiedWindow) portRow(csName, repo string, port codespace.Port) fyne.CanvasObject {
+	title := widget.NewLabel(codespace.PortLabel(port))
+	title.TextStyle = fyne.TextStyle{Bold: true}
+	urlLabel := widget.NewLabel(port.BrowseURL)
+	if port.BrowseURL == "" {
+		urlLabel.SetText("No browse URL")
+	}
+	urlLabel.Truncation = fyne.TextTruncateEllipsis
+	urlLabel.TextStyle = fyne.TextStyle{Monospace: true}
+
+	openBtn := widget.NewButton("Open", func() {
+		uw.daemon.openURL(port.BrowseURL)
+	})
+	copyBtn := widget.NewButton("Copy", func() {
+		uw.daemon.copyText(port.BrowseURL)
+	})
+	if port.BrowseURL == "" {
+		openBtn.Disable()
+		copyBtn.Disable()
+	}
+
+	remotePort := port.SourcePort
+	localPort := port.SourcePort
+	var forwardBtn *widget.Button
+	if uw.daemon.forwards != nil && uw.daemon.forwards.IsActive(csName, remotePort, localPort) {
+		forwardBtn = widget.NewButton(fmt.Sprintf("Stop localhost %d", localPort), func() {
+			uw.daemon.stopLocalPortForward(csName, remotePort, localPort)
+			uw.showCosmoCodespaceDetail(csName, repo)
+		})
+	} else {
+		forwardBtn = widget.NewButton(fmt.Sprintf("Forward localhost %d:%d", remotePort, localPort), func() {
+			go func() {
+				if err := uw.daemon.startLocalPortForward(csName, remotePort, localPort); err != nil {
+					uw.daemon.notify(err.Error())
+				}
+				fyne.Do(func() { uw.showCosmoCodespaceDetail(csName, repo) })
+			}()
+		})
+	}
+
+	left := container.NewVBox(title, urlLabel)
+	actions := container.NewHBox(openBtn, copyBtn, forwardBtn)
+	return surfaceCard(container.NewBorder(nil, nil, nil, actions, left))
 }
 
 func stateColor(state string) color.Color {
@@ -684,4 +763,3 @@ end tell`, shellCmd)
 		}
 	}
 }
-

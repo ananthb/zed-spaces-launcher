@@ -55,6 +55,17 @@
             pkgs.xvfb-run
           ];
 
+          # On Linux, golang.design/x/hotkey's init() calls XOpenDisplay
+          # and panics with no DISPLAY, so any package that imports it
+          # (internal/daemon) cannot even load its test binary in the
+          # nix sandbox. Wrap go test in xvfb-run to provide a display.
+          checkPhase = ''
+            runHook preCheck
+            export GOFLAGS=''${GOFLAGS//-trimpath/}
+            ${pkgs.lib.optionalString pkgs.stdenv.isLinux "xvfb-run -a "}go test -tags=netgo ./...
+            runHook postCheck
+          '';
+
           buildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [
             pkgs.apple-sdk
           ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
@@ -175,6 +186,10 @@
             pkgs.xorg.libXxf86vm
             pkgs.xorg.libXext
             pkgs.xorg.libXfixes
+            # `go test` over the daemon package needs a display because
+            # golang.design/x/hotkey opens an X11 connection in init().
+            # Run tests as: `xvfb-run -a go test ./...`
+            pkgs.xvfb-run
           ];
         };
       }

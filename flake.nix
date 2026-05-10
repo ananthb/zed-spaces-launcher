@@ -172,6 +172,11 @@
             pkgs.gopls
             pkgs.gh
             pkgs.pkg-config
+            # goreleaser drives the user-facing release pipeline
+            # (binary build, archives, DMG, signing, GitHub release).
+            # See .goreleaser.darwin.yaml / .goreleaser.linux.yaml.
+            pkgs.goreleaser
+            pkgs.cosign
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
             pkgs.apple-sdk
           ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [

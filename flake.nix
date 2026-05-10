@@ -50,7 +50,11 @@
         # opt into `packages.cosmonaut-prebuilt` instead.
         cosmonautFromSource = pkgs.buildGoModule {
           pname = "cosmonaut";
-          version = "0.8.0";
+          # Not a user-facing version — this derivation only feeds the
+          # AppImage and serves as the home-manager default until users
+          # opt into cosmonautPrebuilt. The released version comes from
+          # the git tag via goreleaser's `-X main.version` ldflag.
+          version = "unstable";
           src = ./.;
 
           vendorHash = "sha256-Hc22uW6Eq1tY567WipjS8GCPWNJcT9Db5Wpovs/MAdU=";

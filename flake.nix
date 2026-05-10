@@ -132,28 +132,12 @@
           default = cosmonaut;
           cosmonaut = cosmonaut;
         }
-        # Linux: release tarball + AppImage
+        # Hermetic AppImage: bundles the entire nix closure as squashfs
+        # and mounts via user namespaces, so the binary's RUNPATH and
+        # interpreter resolve at runtime on any Linux box. Goreleaser
+        # attaches this to the GitHub release alongside its own
+        # tarball + DMG outputs.
         // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
-          release =
-            let
-              pkg = cosmonaut;
-              arch = if system == "x86_64-linux" then "amd64" else "arm64";
-            in
-            pkgs.runCommand "cosmonaut-${arch}.tar.gz"
-              { nativeBuildInputs = [ pkgs.gzip ]; }
-              ''
-                # Ship the real Go binary (.cosmonaut-wrapped), not the nix
-                # wrapper at bin/cosmonaut: that wrapper hardcodes /nix/store
-                # paths and is unusable outside the build sandbox. Users need
-                # gh on their own PATH, same as any standalone distribution.
-                mkdir -p cosmonaut
-                cp ${pkg}/bin/.cosmonaut-wrapped cosmonaut/cosmonaut
-                chmod +w cosmonaut/cosmonaut
-                cp ${./dist/cosmonaut.config.example.json} cosmonaut/
-                cp ${./dist/cosmonaut.service} cosmonaut/
-                tar -czvf $out -C . cosmonaut
-              '';
-
           appimage = nix-appimage.lib.${system}.mkAppImage {
             program = "${cosmonaut}/bin/.cosmonaut-wrapped";
             pname = "cosmonaut";
@@ -161,10 +145,12 @@
           };
         };
 
-        # The Darwin DMG is assembled by .github/workflows/release.yml
-        # from the default package, not via a dedicated flake output,
-        # so that the shipped binary is the raw .cosmonaut-wrapped file
-        # instead of a nix wrapper referencing /nix/store paths.
+        # The Linux tarball and macOS DMG are produced by goreleaser
+        # (see .goreleaser.{linux,darwin}.yaml + .github/workflows/
+        # release.yml). The buildGoModule derivation above continues to
+        # exist for the AppImage and as the default home-manager
+        # package binding; it is slated for slimming in a follow-up
+        # PR that introduces a prebuilt-fetch consumer derivation.
 
         devShells.default = pkgs.mkShell {
           packages = [

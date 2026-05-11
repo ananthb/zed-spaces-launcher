@@ -1,0 +1,91 @@
+name: Release (goreleaser, parallel)
+
+# PR 1 of the goreleaser migration runs this workflow alongside the
+# existing release.yml, producing equivalent artifacts as workflow
+# uploads (no GitHub release) so reviewers can compare the goreleaser
+# pipeline's output against the canonical pipeline before cutover.
+# Promoted to release.yml in PR 2; this file is then deleted.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-darwin:
+    name: macOS (goreleaser)
+    runs-on: macos-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # goreleaser needs git history for previous tag
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --snapshot --clean --config .goreleaser.darwin.yaml
+
+      - name: List artifacts
+        run: |
+          ls -la build/
+          file build/cosmonaut-macos-arm64.dmg build/cosmonaut-macos-arm64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: goreleaser-darwin
+          path: |
+            build/cosmonaut-macos-arm64.dmg
+            build/cosmonaut-macos-arm64.tar.gz
+          if-no-files-found: error
+
+  build-linux:
+    name: Linux (goreleaser)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install GTK / X11 build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev libappindicator3-dev libgl1-mesa-dev pkg-config \
+            libx11-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev \
+            libxxf86vm-dev libxext-dev libxfixes-dev
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --snapshot --clean --config .goreleaser.linux.yaml
+
+      - name: List artifacts
+        run: |
+          ls -la build/
+          file build/cosmonaut-amd64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: goreleaser-linux
+          path: build/cosmonaut-amd64.tar.gz
+          if-no-files-found: error

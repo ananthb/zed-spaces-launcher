@@ -55,6 +55,19 @@ The [release workflow](https://github.com/linuskendall/cosmonaut/blob/main/.gith
 
 Notarization is intentionally out of scope. The DMG is ad-hoc codesigned, so users still run `xattr -d com.apple.quarantine` after copying `Cosmonaut.app` to `/Applications`.
 
+### Bump the prebuilt-fetch nix package
+
+After the release workflow has published the artifacts, point the flake's `cosmonaut-prebuilt` package at the new tag:
+
+```bash
+nix develop --command scripts/bump-flake-version.sh
+git add flake.nix
+git commit -m 'bump cosmonaut-prebuilt to v0.9.0'
+git push origin main
+```
+
+The script reads the latest GitHub release, computes `nix-prefetch-url` sha256s for `cosmonaut-amd64.tar.gz` and `cosmonaut-macos-arm64.tar.gz`, and rewrites the `release = { ... }` block at the top of `flake.nix`. Until you run it, `nix build .#cosmonaut-prebuilt` fails with a clear hash-mismatch error — placeholder hashes ship in the flake by default so an unbumped flake never produces a working-but-stale binary.
+
 ### Home-manager module drift
 
 The Nix Home Manager module in `modules/home-manager.nix` duplicates some daemon config defaults (like the hotkey) for documentation purposes. If you change a default in the Go code, update the Nix module default to match. This is a manual check — there's no CI job that asserts it.
